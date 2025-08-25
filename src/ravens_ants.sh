@@ -86,6 +86,11 @@ ants_reg() {
           --convergence [40x20x0,1e-6,10]
           --shrink-factors 4x2x1
           --smoothing-sigmas 2x1x0vox
+        --transform Affine[0.1]
+          --metric MI["$fixed","$moving",1,32,Regular,0.25]
+          --convergence [40x20x0,1e-6,10]
+          --shrink-factors 4x2x1
+          --smoothing-sigmas 2x1x0vox          
         --transform SyN[0.25,3,0]
           --metric CC["$fixed","$moving",1,4]
           --convergence [70x40x20,1e-6,10]
