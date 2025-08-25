@@ -15,8 +15,13 @@ pip install nichart-ravens [FIXME: dependencies ANTs 2.3.1 and Python (nibabel))
 ```
 
 ## Quick Test
-- See:
-    test/scripts/testrun_ravens_ants.sh
-  to apply a fast RAVENS calculation on two scans
+- See the test script to apply a fast RAVENS calculation on two scans:
+ 
+```bash
+cd ./test/scripts
+./testrun_ravens_ants.sh
+```
+  
+  
 
 
