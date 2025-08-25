@@ -371,7 +371,7 @@ out_mask_pref=${tmp_pref}Label_
 if [ -e ${out_mask_pref}List.csv ]; then
     echo; echo "Label masks exists, skip calculation!"
 else
-    cmd="python3 util/util_create_label_masks.py ${l_file} ${out_mask_pref}"
+    cmd="python3 utils/util_create_label_masks.py ${l_file} ${out_mask_pref}"
     echo; echo "Running: $cmd"
     $cmd
 fi
@@ -397,7 +397,7 @@ for label in $(cat ${out_mask_pref}List.csv); do
     if [ -e ${label_out} ]; then
         echo; echo "Warped label exists, skip calculation!"
     else
-        python3 util/util_multiply_images.py ${label_in} ${final_jac} ${label_out}
+        python3 utils/util_multiply_images.py ${label_in} ${final_jac} ${label_out}
     fi
 done
 
