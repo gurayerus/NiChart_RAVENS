@@ -5,24 +5,31 @@
 sdir="$(cd ../../src && pwd)"
 tdir="$(cd ../../resources/templates/colin27 && pwd)"
 indir="$(cd ../input && pwd)"
-outdir="$(cd ../output_new && pwd)"
+
+mkdir -pv ../output
+outdir="$(cd ../output && pwd)"
 
 ##############################################
 ## Set data and template
-tImg=${tdir}/colin27_t1_tal_lin_T1_LPS_dlicv_reshaped.nii.gz
+
+# tImg=${tdir}/colin27_t1_tal_lin_T1_LPS_dlicv_reshaped.nii.gz
+tImg=${tdir}/colin27_t1_tal_lin_T1_LPS_dlicv.nii.gz
 
 mrid='subj1'
-# mrid='subj2'
+mrid='subj2'
 
-t1=${indir}/${mrid}/${mrid}_T1_LPS_dlicv_reshaped.nii.gz
-t1seg=${indir}/${mrid}/${mrid}_T1_LPS_dlicv_seg_reshaped.nii.gz
+# t1=${indir}/${mrid}/${mrid}_T1_LPS_dlicv_reshaped.nii.gz
+# t1seg=${indir}/${mrid}/${mrid}_T1_LPS_dlicv_seg_reshaped.nii.gz
+t1=${indir}/${mrid}/${mrid}_T1_LPS_dlicv.nii.gz
+t1seg=${indir}/${mrid}/${mrid}_T1_LPS_dlicv_seg.nii.gz
 
 # regtype='high'
-regtype='balanced'
-regtype='minimal'
+regtype='test'
+# regtype='balanced'
+regtype='high'
 
-#isslurm='yes'
-isslurm='no'
+isslurm='yes'
+#isslurm='no'
 
 outpref="${mrid}_"
 outsub=${outdir}/${regtype}/${mrid}

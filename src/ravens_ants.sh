@@ -53,7 +53,7 @@ usage() {
 }
 
 # Set number of threads for speed
-export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=8
+export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
 
 ##############################################
 ## Core function (to run different versions of ANTs)
@@ -71,6 +71,32 @@ ants_reg() {
         -f "$fixed"
         -m "$moving"
         -o "$outprefix"
+      )
+      ;;
+    test)
+      cmd=(antsRegistration
+        --dimensionality 3 --float 1
+        --output ["${outprefix}",${outprefix}Warped.nii.gz]
+        --interpolation Linear
+        --use-histogram-matching 0
+        --collapse-output-transforms 1        
+        --verbose 1        
+        --initial-moving-transform ["$fixed","$moving",1]
+        --transform Rigid[0.1]
+          --metric MI["$fixed","$moving",1,32,Regular,0.25]
+          --convergence [8x2x0,1e-6,10]
+          --shrink-factors 4x2x1
+          --smoothing-sigmas 2x1x0vox
+        --transform Affine[0.1]
+          --metric MI["$fixed","$moving",1,32,Regular,0.25]
+          --convergence [8x2x0,1e-6,10]
+          --shrink-factors 4x2x1
+          --smoothing-sigmas 2x1x0vox          
+        --transform SyN[0.25,3,0]
+          --metric CC["$fixed","$moving",1,4]
+          --convergence [8x2x0,1e-6,10]
+          --shrink-factors 4x2x1
+          --smoothing-sigmas 2x1x0vox
       )
       ;;
     minimal)
