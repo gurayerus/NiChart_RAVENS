@@ -5,7 +5,7 @@
 sdir="$(cd ../../src && pwd)"
 tdir="$(cd ../../resources/templates/colin27 && pwd)"
 indir="$(cd ../input && pwd)"
-outdir="$(cd ../output && pwd)"
+outdir="$(cd ../output_new && pwd)"
 
 ##############################################
 ## Set data and template
@@ -19,12 +19,13 @@ t1seg=${indir}/${mrid}/${mrid}_T1_LPS_dlicv_seg_reshaped.nii.gz
 
 # regtype='high'
 regtype='balanced'
+regtype='minimal'
 
 #isslurm='yes'
 isslurm='no'
 
 outpref="${mrid}_"
-outsub=${outdir}/${mrid}
+outsub=${outdir}/${regtype}/${mrid}
 
 ##############################################
 # Main 

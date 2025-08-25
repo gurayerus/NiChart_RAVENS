@@ -79,69 +79,48 @@ ants_reg() {
         --output ["${outprefix}",${outprefix}Warped.nii.gz]
         --interpolation Linear
         --use-histogram-matching 0
-        --initial-moving-transform ["$fixed","$moving",1]
+        --collapse-output-transforms 1        
         --verbose 1        
+        --initial-moving-transform ["$fixed","$moving",1]
         --transform Rigid[0.1]
           --metric MI["$fixed","$moving",1,32,Regular,0.25]
-          --convergence [40x20x0,1e-6,10]
+          --convergence [10x5x2,1e-6,10]
           --shrink-factors 4x2x1
           --smoothing-sigmas 2x1x0vox
         --transform Affine[0.1]
           --metric MI["$fixed","$moving",1,32,Regular,0.25]
-          --convergence [40x20x0,1e-6,10]
+          --convergence [10x5x2,1e-6,10]
           --shrink-factors 4x2x1
           --smoothing-sigmas 2x1x0vox          
         --transform SyN[0.25,3,0]
           --metric CC["$fixed","$moving",1,4]
-          --convergence [70x40x20,1e-6,10]
+          --convergence [10x5x2,1e-6,10]
           --shrink-factors 4x2x1
           --smoothing-sigmas 2x1x0vox
       )
       ;;
-    balancedv2)
+    balanced)
       cmd=(antsRegistration
         --dimensionality 3 --float 1
         --output ["${outprefix}",${outprefix}Warped.nii.gz]
         --interpolation Linear
         --use-histogram-matching 0
+        --collapse-output-transforms 1        
+        --verbose 1        
         --initial-moving-transform ["$fixed","$moving",1]
         --transform Rigid[0.1]
           --metric MI["$fixed","$moving",1,32,Regular,0.25]
           --convergence [100x50x25,1e-6,10]
-          --shrink-factors 6x3x1
-          --smoothing-sigmas 3x2x1vox
-        --transform SyN[0.25,3,0]
-          --metric CC["$fixed","$moving",1,4]
-          --convergence [70x40x20,1e-6,10]
-          --shrink-factors 4x2x1
-          --smoothing-sigmas 2x1x0vox
-          --verbose 1
-      )
-      ;;
-    balanced)
-      cmd=(antsRegistration
-        --verbose 1
-        --dimensionality 3 
-        --float 0
-        --collapse-output-transforms 1
-        --output ["${outprefix}",${outprefix}Warped.nii.gz,${outprefix}InwerseWarped.nii.gz]
-        --interpolation Linear
-        --use-histogram-matching 0
-        --winsorize-image-intensities [0.005,0.995] 
-        --initial-moving-transform ["$fixed","$moving",1]
-        --transform Rigid[0.1]
-          --metric MI["$fixed","$moving",1,32,Regular,0.25]
-          --convergence [5x5x1,1e-6,10]
           --shrink-factors 4x2x1
           --smoothing-sigmas 2x1x0vox
         --transform Affine[0.1]
           --metric MI["$fixed","$moving",1,32,Regular,0.25]
-          --convergence [5x5x1,1e-6,10]
+          --convergence [100x50x25,1e-6,10]
           --shrink-factors 4x2x1
           --smoothing-sigmas 2x1x0vox          
-        --transform SyN[0.1,3,0]
+        --transform SyN[0.25,3,0]
           --metric CC["$fixed","$moving",1,4]
-          --convergence [5x3x1,1e-6,10]
+          --convergence [100x50x25,1e-6,10]
           --shrink-factors 4x2x1
           --smoothing-sigmas 2x1x0vox
       )
@@ -174,35 +153,6 @@ ants_reg() {
           --smoothing-sigmas 3x2x1x0vox
       )
       ;;
-    old_v0)
-      # Example old ANTS 3 style (ANTS 3.0 command)
-      cmd=(ANTS 3
-        -m PR["$fixed","$moving",1,2]  # old CC metric
-        -i 10x50x50x10                     # iteration schedule
-        -r Gauss[2,0]                    # smoothing for old ANTS
-        -t SyN[0.3]                     # transform type
-        -o "${outprefix}"                 # output prefix
-      )
-      ;;      
-    old_v1)
-      # Fast, minimal
-      cmd=(ANTS 3
-        -m PR["$fixed","$moving",1,2]  # old CC metric
-        -i 5x5x0                     # iteration schedule
-        -r Gauss[2,0]                    # smoothing for old ANTS
-        -t SyN[0.1]                     # transform type
-        -o "${outprefix}"                 # output prefix
-      )
-      ;;      
-    old_v2)
-      # Using CC instead of PR
-      cmd=(ANTS 3
-        -m CC["$fixed","$moving",1,4]  # old CC metric
-        -i 100x100x50                     # iteration schedule
-        -t SyN[0.3]                     # transform type
-        -o "${outprefix}"                 # output prefix
-      )
-      ;;      
     *)
       echo "Usage: ants_reg {minimal|balanced|high|old_v0|old_v1} fixed.nii.gz moving.nii.gz outprefix pval"
       return 1
