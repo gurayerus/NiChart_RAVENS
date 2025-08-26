@@ -12,3 +12,16 @@ You can install the package using:
 
 ```bash
 pip install nichart-ravens [FIXME: dependencies ANTs 2.3.1 and Python (nibabel))
+```
+
+## Quick Test
+- See the test script to apply a fast RAVENS calculation on two scans:
+ 
+```bash
+cd ./test/scripts
+./testrun_ravens_ants.sh
+```
+  
+  
+
+
