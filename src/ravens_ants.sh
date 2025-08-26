@@ -53,19 +53,44 @@ usage() {
 }
 
 # Set number of threads for speed
-export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
+export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=4
 
 ##############################################
 ## Core function (to run different versions of ANTs)
 ants_reg() {
+  # Runs ANTs using various profiles
+  #
+  # Profiles:
+  #
+  # - default_script: Default version using ANTs script "antsRegistrationSyN.sh"
+  #
+  # - default: Replicates parameters in "antsRegistrationSyN.sh"
+  #   -- Provided to show specific parameters used in default ANTs script
+  #   -- Runs 4 iteration levels. The most time consuming part is the 4th level of 
+  #      deformable registration (transform: Syn, convergence: 1000x70x50x20)
+  #      e.g. 4th level is iterated 20 times and each iteration takes couple of minutes
+  #
+  # - quick_script: Quick version using ANTs script "antsRegistrationSyNQuick.sh"
+  #
+  # - quick: Replicates parameters in "antsRegistrationSyNQuick.sh"
+  #   -- Similar to default version; except iteration # at 4th level is set to 0, so it's skipped
+  #
+  # - balanced: Parameters set to run it faster without penalizing accuracy too much
+  #
+  # - test: Very fast version for testing the pipeline. Results will not be accurate
+  #
+  
+  
   local profile="$1"
   local fixed="$2"
   local moving="$3"
   local outprefix="$4"
 
+    
+
   # Choose options based on profile
   case "$profile" in
-    auto)
+    default_script)
       cmd=(antsRegistrationSyN.sh
         -d 3
         -f "$fixed"
@@ -73,85 +98,7 @@ ants_reg() {
         -o "$outprefix"
       )
       ;;
-    test)
-      cmd=(antsRegistration
-        --dimensionality 3 --float 1
-        --output ["${outprefix}",${outprefix}Warped.nii.gz]
-        --interpolation Linear
-        --use-histogram-matching 0
-        --collapse-output-transforms 1        
-        --verbose 1        
-        --initial-moving-transform ["$fixed","$moving",1]
-        --transform Rigid[0.1]
-          --metric MI["$fixed","$moving",1,32,Regular,0.25]
-          --convergence [8x2x0,1e-6,10]
-          --shrink-factors 4x2x1
-          --smoothing-sigmas 2x1x0vox
-        --transform Affine[0.1]
-          --metric MI["$fixed","$moving",1,32,Regular,0.25]
-          --convergence [8x2x0,1e-6,10]
-          --shrink-factors 4x2x1
-          --smoothing-sigmas 2x1x0vox          
-        --transform SyN[0.25,3,0]
-          --metric CC["$fixed","$moving",1,4]
-          --convergence [8x2x0,1e-6,10]
-          --shrink-factors 4x2x1
-          --smoothing-sigmas 2x1x0vox
-      )
-      ;;
-    minimal)
-      cmd=(antsRegistration
-        --dimensionality 3 --float 1
-        --output ["${outprefix}",${outprefix}Warped.nii.gz]
-        --interpolation Linear
-        --use-histogram-matching 0
-        --collapse-output-transforms 1        
-        --verbose 1        
-        --initial-moving-transform ["$fixed","$moving",1]
-        --transform Rigid[0.1]
-          --metric MI["$fixed","$moving",1,32,Regular,0.25]
-          --convergence [10x5x2,1e-6,10]
-          --shrink-factors 4x2x1
-          --smoothing-sigmas 2x1x0vox
-        --transform Affine[0.1]
-          --metric MI["$fixed","$moving",1,32,Regular,0.25]
-          --convergence [10x5x2,1e-6,10]
-          --shrink-factors 4x2x1
-          --smoothing-sigmas 2x1x0vox          
-        --transform SyN[0.25,3,0]
-          --metric CC["$fixed","$moving",1,4]
-          --convergence [10x5x2,1e-6,10]
-          --shrink-factors 4x2x1
-          --smoothing-sigmas 2x1x0vox
-      )
-      ;;
-    balanced)
-      cmd=(antsRegistration
-        --dimensionality 3 --float 1
-        --output ["${outprefix}",${outprefix}Warped.nii.gz]
-        --interpolation Linear
-        --use-histogram-matching 0
-        --collapse-output-transforms 1        
-        --verbose 1        
-        --initial-moving-transform ["$fixed","$moving",1]
-        --transform Rigid[0.1]
-          --metric MI["$fixed","$moving",1,32,Regular,0.25]
-          --convergence [100x50x25,1e-6,10]
-          --shrink-factors 4x2x1
-          --smoothing-sigmas 2x1x0vox
-        --transform Affine[0.1]
-          --metric MI["$fixed","$moving",1,32,Regular,0.25]
-          --convergence [100x50x25,1e-6,10]
-          --shrink-factors 4x2x1
-          --smoothing-sigmas 2x1x0vox          
-        --transform SyN[0.25,3,0]
-          --metric CC["$fixed","$moving",1,4]
-          --convergence [100x50x25,1e-6,10]
-          --shrink-factors 4x2x1
-          --smoothing-sigmas 2x1x0vox
-      )
-      ;;
-    high)
+    default)
       cmd=(antsRegistration
         --verbose 1
         --dimensionality 3 
@@ -179,8 +126,99 @@ ants_reg() {
           --smoothing-sigmas 3x2x1x0vox
       )
       ;;
+    quick_script)   
+      cmd=(antsRegistrationSyNQuick.sh
+        -d 3
+        -f "$fixed"
+        -m "$moving"
+        -o "$outprefix"
+      )
+      ;;
+    quick)
+      cmd=(antsRegistration
+        --verbose 1
+        --dimensionality 3 
+        --float 0
+        --collapse-output-transforms 1
+        --output ["${outprefix}",${outprefix}Warped.nii.gz,${outprefix}InwerseWarped.nii.gz]
+        --interpolation Linear
+        --use-histogram-matching 0
+        --winsorize-image-intensities [0.005,0.995] 
+        --initial-moving-transform ["$fixed","$moving",1]
+        --transform Rigid[0.1]
+          --metric MI["$fixed","$moving",1,32,Regular,0.25]
+          --convergence [1000x500x250x0,1e-6,10]
+          --shrink-factors 8x4x2x1
+          --smoothing-sigmas 3x2x1x0vox
+        --transform Affine[0.1]
+          --metric MI["$fixed","$moving",1,32,Regular,0.25]
+          --convergence [1000x500x250x0,1e-6,10]
+          --shrink-factors 8x4x2x1
+          --smoothing-sigmas 3x2x1x0vox          
+        --transform SyN[0.1,3,0]
+          --metric CC["$fixed","$moving",1,4]
+          --convergence [100x70x50x0,1e-6,10]
+          --shrink-factors 8x4x2x1
+          --smoothing-sigmas 3x2x1x0vox
+      )
+      ;;
+    balanced)
+      cmd=(antsRegistration
+        --verbose 1
+        --dimensionality 3 
+        --float 0
+        --collapse-output-transforms 1
+        --output ["${outprefix}",${outprefix}Warped.nii.gz,${outprefix}InwerseWarped.nii.gz]
+        --interpolation Linear
+        --use-histogram-matching 0
+        --winsorize-image-intensities [0.005,0.995] 
+        --initial-moving-transform ["$fixed","$moving",1]
+        --transform Rigid[0.1]
+          --metric MI["$fixed","$moving",1,32,Regular,0.25]
+          --convergence [10x50x50x10,1e-6,10]
+          --shrink-factors 8x4x2x1
+          --smoothing-sigmas 3x2x1x0vox
+        --transform Affine[0.1]
+          --metric MI["$fixed","$moving",1,32,Regular,0.25]
+          --convergence [10x50x50x10,1e-6,10]
+          --shrink-factors 8x4x2x1
+          --smoothing-sigmas 3x2x1x0vox          
+        --transform SyN[0.1,3,0]
+          --metric CC["$fixed","$moving",1,4]
+          --convergence [10x50x50x10,1e-6,10]
+          --shrink-factors 8x4x2x1
+          --smoothing-sigmas 3x2x1x0vox
+      )
+      ;;      
+    test)
+      cmd=(antsRegistration
+        --dimensionality 3 
+        --float 1
+        --output ["${outprefix}",${outprefix}Warped.nii.gz]
+        --interpolation Linear
+        --use-histogram-matching 0
+        --collapse-output-transforms 1        
+        --verbose 1        
+        --initial-moving-transform ["$fixed","$moving",1]
+        --transform Rigid[0.1]
+          --metric MI["$fixed","$moving",1,32,Regular,0.25]
+          --convergence [8x2x0,1e-6,10]
+          --shrink-factors 4x2x1
+          --smoothing-sigmas 2x1x0vox
+        --transform Affine[0.1]
+          --metric MI["$fixed","$moving",1,32,Regular,0.25]
+          --convergence [8x2x0,1e-6,10]
+          --shrink-factors 4x2x1
+          --smoothing-sigmas 2x1x0vox          
+        --transform SyN[0.25,3,0]
+          --metric CC["$fixed","$moving",1,4]
+          --convergence [8x2x0,1e-6,10]
+          --shrink-factors 4x2x1
+          --smoothing-sigmas 2x1x0vox
+      )
+      ;;
     *)
-      echo "Usage: ants_reg {minimal|balanced|high|old_v0|old_v1} fixed.nii.gz moving.nii.gz outprefix pval"
+      echo "Usage: ants_reg {default_script|default|quick_script|quick|balanced|test} fixed.nii.gz moving.nii.gz outprefix pval"
       return 1
       ;;
   esac
