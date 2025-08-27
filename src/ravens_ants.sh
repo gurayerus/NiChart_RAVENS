@@ -23,23 +23,25 @@
 # ==========================================================
 
 # Default values for optional arguments
-p_reg="minimal"
+m_val="minimal"
+n_val="no"
 f_val=1000
 
 # Usage message
 usage() {
-  echo "Usage: $0 -s <source_file> -l <label_file> -t <target_file> -d <output_dir> -r <output_prefix> [-p <string>] [-i <string>] [-f <int>]"
+  echo "Usage: $0 -s <source_file> -l <label_file> -t <target_file> -d <output_dir> -p <output_prefix> [-m <string>] [-i <string>] [-n <string>] [-f <int>]"
   echo
   echo "Required:"
   echo "  -s   Source image file (absolute path)"
   echo "  -l   Label image file (absolute path)"
   echo "  -t   Target image file (absolute path)"
   echo "  -d   Output folder (absolute path)"
-  echo "  -r   Output prefix"
+  echo "  -p   Output prefix"
   echo
   echo "Optional:"
-  echo "  -p   Registration mode (default: old_v0)"
+  echo "  -m   Registration mode (default: default)"
   echo "  -i   Labels used for output RAVENS (default: All label values other than 0)"
+  echo "  -n   Invert image intensities (default: no)"
   echo "  -f   Scaling factor (default: 1000)"
 
   echo "Example:"
@@ -304,15 +306,16 @@ ants_compose() {
 
 ##############################################
 # Parse options
-while getopts ":s:l:t:d:r:p:i:f:" opt; do
+while getopts ":s:l:t:d:p:m:i:n:f:" opt; do
   case ${opt} in
     s ) s_file=$OPTARG ;;
     l ) l_file=$OPTARG ;;
     t ) t_file=$OPTARG ;;
     d ) out_dir=$OPTARG ;;
-    r ) out_pref=$OPTARG ;;
-    p ) p_reg=$OPTARG ;;
+    p ) out_pref=$OPTARG ;;
+    m ) m_val=$OPTARG ;;
     i ) i_val=$OPTARG ;;
+    n ) n_val=$OPTARG ;;
     f ) f_val=$OPTARG ;;
     \? ) echo "Invalid option: -$OPTARG" >&2; usage ;;
     : ) echo "Option -$OPTARG requires an argument." >&2; usage ;;
@@ -332,14 +335,19 @@ mkdir -p "$out_dir"
 tmp_dir=$(mktemp -d "${out_dir}/tmp_XXXXXX")
 mkdir -p "$tmp_dir"
 
+# Set prefix for outputs
+tmp_pref=${tmp_dir}/${out_pref}
+out_pref=${out_dir}/${out_pref}
+
 # Print parsed arguments (for testing/debugging)
 echo "Source image:        $s_file"
+echo "Label image:         $l_file"
 echo "Target image:        $t_file"
 echo "Output directory:    $out_dir"
 echo "Output prefix:       $out_pref"
-echo "Label image:         $l_file"
-echo "Registration mode (-p): $p_reg"
+echo "Registration mode (-m): $m_val"
 echo "Intensities (-i):    $i_val"
+echo "Invert image intensities (-n): $n_val"
 echo "Scaling factor (-f): $f_val"
 
 # Check that input files exist
@@ -350,15 +358,22 @@ for f in "$s_file" "$t_file" "$l_file"; do
   fi
 done
 
+# Invert image intensities
+if [ "${n_val}" == 'yes' ]; then
+    final_inv=${out_pref}Inv.nii.gz
+    cmd="python3 utils/util_invert_img.py ${s_file} ${final_inv}"
+    echo; echo "Running: $cmd"
+    $cmd
+    s_file=${final_inv}
+fi
+
 # Calculate deformation
-tmp_pref=${tmp_dir}/${out_pref}
-out_pref=${out_dir}/${out_pref}
 final_def=${out_pref}Def.nii.gz
 if [ -e ${final_def} ]; then
     echo; echo "Deformation exists, skip ANTs registration!"
 else
     # Calculate ANTS registration
-    ants_reg ${p_reg} ${t_file} ${s_file} ${tmp_pref}
+    ants_reg ${m_val} ${t_file} ${s_file} ${tmp_pref}
 
     # Compose def fields
     #     tmp_warp=${tmp_pref}Warp.nii.gz (suffixes for old ants command)
