@@ -6,8 +6,8 @@ sdir="$(cd ../../src && pwd)"
 tdir="$(cd ../../resources/templates/colin27 && pwd)"
 indir="$(cd ../input && pwd)"
 
-mkdir -pv ../output6
-outdir="$(cd ../output6 && pwd)"
+mkdir -pv ../output7inv
+outdir="$(cd ../output7inv && pwd)"
 
 ##############################################
 ## Set data and template
@@ -15,15 +15,16 @@ outdir="$(cd ../output6 && pwd)"
 # tImg=${tdir}/colin27_t1_tal_lin_T1_LPS_dlicv_reshaped.nii.gz
 tImg=${tdir}/colin27_t1_tal_lin_T1_LPS_dlicv.nii.gz
 
-mrid='subj1'
+# mrid='subj1'
 # mrid='subj2'
+mrid='subj3'
 
 # t1=${indir}/${mrid}/${mrid}_T1_LPS_dlicv_reshaped.nii.gz
 # t1seg=${indir}/${mrid}/${mrid}_T1_LPS_dlicv_seg_reshaped.nii.gz
 t1=${indir}/${mrid}/${mrid}_T1_LPS_dlicv.nii.gz
 t1seg=${indir}/${mrid}/${mrid}_T1_LPS_dlicv_seg.nii.gz
 
-regtype='default'
+# regtype='default'
 regtype='test'
 
 isslurm='yes'
@@ -32,7 +33,7 @@ isslurm='yes'
 outpref="${mrid}_"
 outsub=${outdir}/${regtype}/${mrid}
 
-is_invert='no'
+# is_invert='no'
 is_invert='yes'
 
 ##############################################
