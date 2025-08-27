@@ -32,8 +32,16 @@ isslurm='yes'
 outpref="${mrid}_"
 outsub=${outdir}/${regtype}/${mrid}
 
+is_invert='no'
+is_invert='yes'
+
 ##############################################
 # Main 
+
+# Update template if user want to invert image
+if [ "${is_invert}" == 'yes' ]; then
+   tImg=${tImg%.nii.gz}_Inv.nii.gz 
+fi
 
 # Create out dir for subject
 mkdir -pv $outsub
@@ -43,13 +51,13 @@ cd $sdir
 
 # Run command
 if [ "${isslurm}" == 'no' ]; then
-    cmd="./ravens_ants.sh -s $t1 -l ${t1seg} -t ${tImg} -d ${outsub} -r ${outpref} -p ${regtype}"
+    cmd="./ravens_ants.sh -s $t1 -l ${t1seg} -t ${tImg} -d ${outsub} -p ${outpref} -m ${regtype} -n ${is_invert}"
     echo "About to run: $cmd"
     $cmd
 else
     logdir=${outsub}/log_slurm
     mkdir -pv $logdir
-    cmd="sbatch --output=${logdir}/%x_%j.out --error=${logdir}/%x_%j.err --cpus-per-task=4 --time=08:00:00 --propagate=NONE ./ravens_ants.sh -s $t1 -l ${t1seg} -t ${tImg} -d ${outsub} -r ${outpref} -p ${regtype}"
+    cmd="sbatch --output=${logdir}/%x_%j.out --error=${logdir}/%x_%j.err --cpus-per-task=4 --time=08:00:00 --propagate=NONE ./ravens_ants.sh -s $t1 -l ${t1seg} -t ${tImg} -d ${outsub} -p ${outpref} -m ${regtype} -n ${is_invert}"
     echo "About to run: $cmd"
     $cmd
 fi
