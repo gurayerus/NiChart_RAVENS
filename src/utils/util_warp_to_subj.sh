@@ -1,15 +1,14 @@
 #!/usr/bin/bash
 #
 # ==========================================================
-# Script: calc_abnmap_ants.sh
-# Purpose: Calculate abnormality map and warp it to subject space using ANTs
+# Script: util_warp_to_subj.sh
+# Purpose: Warp map to subject space using ANTs
 # Author: Guray Erus
 # Date: 2025-08-25
 # ==========================================================
 #
 # Description:
-#   This script uses input RAVENS maps  and a set of reference maps to calculate a statistical map
-#   It warps the final map to subject space
+#   This script warps a map to subject space
 #
 # Requirements:
 #   - ANTs (>=2.0)
@@ -22,12 +21,12 @@
 
 #!/usr/bin/env bash
 #
-# Calculate a statistical map and warp it from atlas space to subject space
+# Warp a map from atlas space to subject space
 # using ANTs' antsApplyTransforms.
 #
 # Example:
-#   ./calc_abnmap_ants.sh -m atlas_map.nii.gz -i subj_T1.nii.gz \
-#                     -t warp.nii.gz -t affine.mat \
+#   ./util_warp_to_subj.sh -m atlas_map.nii.gz -i subj_T1.nii.gz \
+#                     -w warp.nii.gz -t affine.mat \
 #                     -o subj_map.nii.gz -n Linear
 #
 
