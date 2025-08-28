@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/usr/bin/bash +x
 #
 # ==========================================================
 # Script: util_warp_to_subj.sh
@@ -86,7 +86,7 @@ cmd=(antsApplyTransforms -d 3
      -r "${in_img}"
      -n "${interp}"
      -o "${out_map}"
-     -t "[ ${in_affine}, 1 ]"
+     -t "[${in_affine},1]"
      -t "${in_warp}"     
     )
 

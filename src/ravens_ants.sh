@@ -367,20 +367,30 @@ if [ "${n_val}" == 'yes' ]; then
     s_file=${final_inv}
 fi
 
+# Apply ANTs
+final_warped=${out_pref}Warped.nii.gz
+final_warp=${out_pref}1Warp.nii.gz
+final_invwarp=${out_pref}1InverseWarp.nii.gz
+final_affine=${out_pref}0GenericAffine.mat
+if [ -e ${final_warped} ] && [ -e ${final_warp} ] && [ -e ${final_invwarp} ] && [ -e ${final_affine} ]; then
+    echo; echo "ANTs results exist, skip ANTs registration!"
+else
+    # Calculate ANTS registration
+    ants_reg ${m_val} ${t_file} ${s_file} ${tmp_pref}
+
+    # Move final results from tmp
+    mv ${tmp_pref}Warped.nii.gz ${final_warped}
+    mv ${tmp_pref}1Warp.nii.gz ${final_warp}
+    mv ${tmp_pref}1InverseWarp.nii.gz ${final_invwarp}
+    mv ${tmp_pref}0GenericAffine.mat ${final_affine}
+fi
+
 # Calculate deformation
 final_def=${out_pref}Def.nii.gz
 if [ -e ${final_def} ]; then
     echo; echo "Deformation exists, skip ANTs registration!"
 else
-    # Calculate ANTS registration
-    ants_reg ${m_val} ${t_file} ${s_file} ${tmp_pref}
-
-    # Compose def fields
-    #     tmp_warp=${tmp_pref}Warp.nii.gz (suffixes for old ants command)
-    #     tmp_affine=${tmp_pref}Affine.txt (suffixes for old ants command)
-    tmp_warp=${tmp_pref}1Warp.nii.gz
-    tmp_affine=${tmp_pref}0GenericAffine.mat
-    ants_compose ${tmp_warp} ${tmp_affine} ${t_file} ${final_def}
+    ants_compose ${final_warp} ${final_affine} ${t_file} ${final_def}
 fi
 
 # Create jacobian
@@ -391,14 +401,13 @@ else
     ants_calc_jacdet ${final_def} ${final_jac}
 fi
 
-# Warp image
-interp='Linear'
-final_warped=${out_pref}Warped.nii.gz
-if [ -e ${final_warped} ]; then
-    echo; echo "Warped image exists, skip calculation!"
-else
-    ants_apply ${s_file} ${final_def} ${t_file} ${interp} ${final_warped}
-fi
+# # Warp image
+# interp='Linear'
+# if [ -e ${final_warped} ]; then
+#     echo; echo "Warped image exists, skip calculation!"
+# else
+#     ants_apply ${s_file} ${final_def} ${t_file} ${interp} ${final_warped}
+# fi
 
 # Create a mask image for each label
 out_mask_pref=${tmp_pref}Label_
@@ -411,13 +420,12 @@ else
 fi
 
 # Warp label masks
-# interp='NearestNeighbor'
 interp='Linear'
 for label in $(cat ${out_mask_pref}List.csv); do
     label_in=${out_mask_pref}${label}.nii.gz
     label_out=${out_mask_pref}${label}_warped.nii.gz
     if [ -e ${label_out} ]; then
-        echo; echo "Warped label exists, skip calculation!"
+        echo; echo "Warped label ${label} exists, skip calculation!"
     else
         ants_apply ${label_in} ${final_def} ${t_file} ${interp} ${label_out}
     fi
@@ -429,9 +437,23 @@ for label in $(cat ${out_mask_pref}List.csv); do
     label_in=${out_mask_pref}${label}_warped.nii.gz
     label_out=${out_pref}Label_${label}_RAVENS.nii.gz
     if [ -e ${label_out} ]; then
-        echo; echo "Warped label exists, skip calculation!"
+        echo; echo "RAVENS map for label ${label} exists, skip calculation!"
     else
         python3 utils/util_multiply_images.py ${label_in} ${final_jac} ${label_out}
+    fi
+done
+
+# Warp RAVENS back to subj space
+interp='Linear'
+for label in $(cat ${out_mask_pref}List.csv); do
+    map_in=${out_pref}Label_${label}_RAVENS.nii.gz
+    map_out=${out_pref}Label_${label}_RAVENS_InSubj.nii.gz
+    if [ -e ${map_out} ]; then
+        echo; echo "RAVENS map in subject space for label ${label} exists, skip calculation!"
+    else
+        cmd="utils/util_warp_to_subj.sh -m ${map_in} -i ${s_file} -w ${final_invwarp} -t ${final_affine} -o ${map_out}"
+        echo; echo "Running: $cmd"
+        $cmd
     fi
 done
 
