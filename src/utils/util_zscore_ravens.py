@@ -60,6 +60,8 @@ def calc_zmap(in_list, flag_corr_icv, out_file, thresh_mask=50):
             axis=-1
         )
 
+    print(ref_data.shape)
+
     # Compute mean and std from references
     ref_mean = np.mean(ref_data, axis=-1)
     ref_std = np.std(ref_data, axis=-1, ddof=1)
