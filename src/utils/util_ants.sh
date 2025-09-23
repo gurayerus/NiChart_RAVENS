@@ -260,3 +260,47 @@ ants_compose() {
     "${cmd[@]}"
 }
 
+ants_apply_inv() {
+    local in_map="$1"
+    local in_img="$2"
+    local in_warp="$3"
+    local in_affine="$4"
+    local out_map="$5"
+    local interp="$6"
+    
+    # ---------------------------
+    # Check required args
+    # ---------------------------
+    if [ -z "${in_map:-}" ] || [ -z "${in_img:-}" ] || [ -z "${in_warp:-}" ] || [ -z "${in_affine:-}" ]; then
+        echo "Error: Missing required argument(s)."
+        usage
+    fi
+
+    # ---------------------------
+    # Build antsApplyTransforms command
+    # ---------------------------
+    cmd=(antsApplyTransforms -d 3
+        -i "${in_map}"
+        -r "${in_img}"
+        -n "${interp}"
+        -o "${out_map}"
+        -t "[${in_affine},1]"
+        -t "${in_warp}"     
+        )
+
+#     # ---------------------------
+#     # Run
+#     # ---------------------------
+#     echo "Running: ${cmd[*]}"
+#     "${cmd[@]}"
+
+    # Print nicely
+    echo; echo ">>> Command to run:"
+    printf '%s ' "${cmd[@]}"
+    echo -e "\n"
+
+    # Run
+    "${cmd[@]}"
+}
+
+
