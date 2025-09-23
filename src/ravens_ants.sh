@@ -202,10 +202,6 @@ for label in $(cat ${out_mask_pref}List.csv); do
         echo; echo "RAVENS map in subject space for label ${label} exists, skip calculation!"
     else
         ants_apply_inv ${map_in} ${s_file} ${final_invwarp} ${final_affine} ${map_out} ${interp}
-
-#         cmd="utils/util_warp_to_subj.sh -m ${map_in} -i ${s_file} -w ${final_invwarp} -t ${final_affine} -o ${map_out}"
-#         echo; echo "Running: $cmd"
-#         $cmd
     fi
 done
 

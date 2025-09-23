@@ -3,7 +3,7 @@ import os
 import argparse
 
 def find_matches(
-    query_csv, target_csv, target_mrid, out_file, age_tolerance=0.5, match_sex=True
+    query_csv, query_mrid, ref_csv, out_file, age_tolerance=0.5, match_sex=True
 ):
     """
     Find matching subjects between query and target datasets.
@@ -12,9 +12,9 @@ def find_matches(
     ----------
     query_csv : str
         Path to query CSV (must contain MRID, age, sex).
-    target_csv : str
-        Path to target CSV (must contain MRID, age, sex).
-    target_mrid : str
+    ref_csv : str
+        Path to reference CSV (must contain MRID, age, sex).
+    query_mrid : str
         MRID in query file to use as the reference subject.
     age_tolerance : float
         Allowed absolute difference in age for a match.
@@ -28,22 +28,23 @@ def find_matches(
     """
     # Load both datasets
     df_query = pd.read_csv(query_csv)
-    df_target = pd.read_csv(target_csv)
+    df_ref = pd.read_csv(ref_csv)
 
     # Get the reference row
-    ref_row = df_query[df_query["MRID"] == target_mrid]
-    if ref_row.empty:
-        raise ValueError(f"MRID {target_mrid} not found in query file.")
+    sel_row = df_query[df_query["MRID"] == query_mrid]
+    if sel_row.empty:
+        print(df_query)
+        raise ValueError(f"MRID {query_mrid} not found in query file.")
 
-    ref_row = ref_row.iloc[0]  # get as Series
-    ref_age = ref_row["age"]
-    ref_sex = ref_row["sex"]
+    sel_row = sel_row.iloc[0]  # get as Series
+    sel_age = sel_row["Age"]
+    sel_sex = sel_row["Sex"]
 
     # Apply matching rules
-    matches = df_target[abs(df_target["age"] - ref_age) <= age_tolerance]
+    matches = df_ref[abs(df_ref["Age"] - sel_age) <= age_tolerance]
 
     if match_sex:
-        matches = matches[matches["sex"] == ref_sex]
+        matches = matches[matches["Sex"] == sel_sex]
 
     # Create parent directories if needed
     os.makedirs(os.path.dirname(out_file) or ".", exist_ok=True)
@@ -58,20 +59,20 @@ def find_matches(
     matches.to_csv(out_file, index=False)
     
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Find matches between query and target datasets.")
+    parser = argparse.ArgumentParser(description="Find matches between query and reference datasets.")
     parser.add_argument("--query", required=True, help="Path to query CSV file")
-    parser.add_argument("--target", required=True, help="Path to target CSV file")
-    parser.add_argument("--mrid", required=True, help="Target MRID in query file")
+    parser.add_argument("--mrid", required=True, help="Selected MRID in query file")
+    parser.add_argument("--ref", required=True, help="Path to reference CSV file")
+    parser.add_argument("--out", required=True, help="Output CSV file path")
     parser.add_argument("--age_tol", type=float, default=0.5, help="Age tolerance for matching (default: 0.5)")
     parser.add_argument("--match_sex", action="store_true", help="Require same sex for matching")
-    parser.add_argument("--out", help="Output CSV file path (default: matches_<MRID>.csv)")
 
     args = parser.parse_args()
 
     out_file = find_matches(
         args.query,
-        args.target,
         args.mrid,
+        args.ref,
         age_tolerance=args.age_tol,
         match_sex=args.match_sex,
         out_file=args.out,

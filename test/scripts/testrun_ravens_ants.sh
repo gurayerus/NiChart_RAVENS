@@ -35,7 +35,7 @@ is_invert='no'
 ##############################################
 # Main 
 
-# Update template if user want to invert image
+# Update template if user wants to invert image
 if [ "${is_invert}" == 'yes' ]; then
    tImg=${tImg%.nii.gz}_Inv.nii.gz 
 fi
