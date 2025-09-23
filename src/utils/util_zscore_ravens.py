@@ -29,11 +29,23 @@ def calc_zmap(in_list, flag_corr_icv, out_file, thresh_mask=50):
     ref_rows = df.iloc[1:]
 
     # Load images
-    target_img = nib.load(target_row["FileName"])
+    D1='/cbica/home/erusg/GitHub/gurayerus/NiChart_RAVENS/tmp/out/test'
+    S1='_Label_1_RAVENS.nii.gz'
+    
+    D2='/cbica/home/erusg/GitHub/gurayerus/NiChart_RAVENS/tmp/ref/CSF-RAVENS'
+    S2='_T1_LPS_dlicv_seg_ants-0.3_RAVENS_1.nii.gz'
+    
+    target_img = nib.load(D1 + '/' + target_row["MRID"] + '/' + target_row["MRID"] + S1)
     target_data = target_img.get_fdata()
 
-    ref_imgs = [nib.load(f) for f in ref_rows["FileName"]]
+    ref_imgs = [nib.load(D2 + '/' + f + '/' + f + S2) for f in ref_rows["MRID"]]
     ref_data = np.stack([img.get_fdata() for img in ref_imgs], axis=-1)
+
+    #target_img = nib.load(target_row["FileName"])
+    #target_data = target_img.get_fdata()
+
+    #ref_imgs = [nib.load(f) for f in ref_rows["FileName"]]
+    #ref_data = np.stack([img.get_fdata() for img in ref_imgs], axis=-1)
 
     # Apply ICV correction if requested
     if flag_corr_icv:
