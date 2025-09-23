@@ -2,6 +2,7 @@ import argparse
 import pandas as pd
 import numpy as np
 import nibabel as nib
+import os
 
 def calc_zmap(in_list, flag_corr_icv, out_file, thresh_mask=50):
     """
