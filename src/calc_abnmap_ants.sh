@@ -43,27 +43,27 @@ transforms=()     # list of transforms
 # Parse options
 # ---------------------------
 usage() {
-    echo "Usage: $0 -m <in_map> -i <in_img> -t <transform> [-t <transform> ...] -o <out_map> [-n <interp>]"
+    echo "Usage: $0 -m <in_map> -i <in_img> -t <transform> [-t <transform> ...] -r <ref_dir> -o <out_dir>"
     echo
     echo "Required arguments:"
     echo "  -m   Statistical map in atlas space"
     echo "  -i   Subject T1 image in subject space"
     echo "  -t   Transform(s) from atlas->subject (can be given multiple times, in order)"
-    echo "  -o   Output statistical map in subject space"
+    echo "  -r   Ref dir"
+    echo "  -o   Output dir"
     echo
     echo "Optional arguments:"
-    echo "  -n   Interpolation method (default: Linear, use NearestNeighbor for labels)"
     echo "  -h   Show this help"
     exit 1
 }
 
-while getopts "m:i:t:o:n:h" opt; do
+while getopts "m:i:t:r:o:h" opt; do
   case $opt in
     m) in_map=$OPTARG ;;
     i) in_img=$OPTARG ;;
     t) transforms+=("$OPTARG") ;;
-    o) out_map=$OPTARG ;;
-    n) interp=$OPTARG ;;
+    r) ref_dir=$OPTARG ;;
+    o) out_dir=$OPTARG ;;
     h) usage ;;
     *) usage ;;
   esac
@@ -72,27 +72,57 @@ done
 # ---------------------------
 # Check required args
 # ---------------------------
-if [ -z "${in_map:-}" ] || [ -z "${in_img:-}" ] || [ ${#transforms[@]} -eq 0 ] || [ -z "${out_map:-}" ]; then
+if [ -z "${in_map:-}" ] || [ -z "${in_img:-}" ] || [ ${#transforms[@]} -eq 0 ] || [ -z "${ref_dir:-}" ] || [ -z "${out_dir:-}" ]; then
     echo "Error: Missing required argument(s)."
     usage
 fi
 
-# ---------------------------
-# Build antsApplyTransforms command
-# ---------------------------
-cmd=(antsApplyTransforms -d 3
-     -i "${in_map}"
-     -r "${in_img}"
-     -n "${interp}"
-     -o "${out_map}")
+mkdir -pv ${out_dir}
 
-# Append transforms (order matters!)
-for t in "${transforms[@]}"; do
-    cmd+=(-t "$t")
-done
+params=${ref_dir}/params.json
 
 # ---------------------------
-# Run
+# Encode input ravens
+out_encoded=${out_dir}/ravens_encoded.npz
+if [ -e ${out_encoded} ]; then
+    echo; echo "Encoded img exists, skip calculation!"
+else
+    cmd="python3 utils/util_encode_ravens.py ${in_map} ${params} ${out_encoded}"
+    echo; echo "Running: $cmd"
+    $cmd
+fi
+
 # ---------------------------
-echo "Running: ${cmd[*]}"
-"${cmd[@]}"
+# Apply z-score
+out_zscore=${out_dir}/ravens_zscore.npz
+age=62
+sex=F
+if [ -e ${out_zscore} ]; then
+    echo; echo "Zscore img exists, skip calculation!"
+else
+    cmd="python3 utils/util_zscore_ravens.py --inmap ${out_encoded} --age $age --sex $sex --ref_dir ${ref_dir} --out_file ${out_zscore}"
+    echo; echo "Running: $cmd"
+    $cmd
+fi
+
+# ---------------------------
+# Decode z-score map
+out_decoded=${out_dir}/ravens_zscore_decoded.nii.gz
+if [ -e ${out_decoded} ]; then
+    echo; echo "Decoded img exists, skip calculation!"
+else
+    cmd="python3 utils/util_decode_ravens.py ${out_zscore} ${params} ${out_decoded} --in_field zmap"
+    echo; echo "Running: $cmd"
+    $cmd
+fi
+
+# # ---------------------------
+# # Warp z-score map to subj space
+# interp='Linear'
+# map_in=${out_pref}Label_${label}_RAVENS.nii.gz
+# map_out=${out_pref}Label_${label}_RAVENS_InSubj.nii.gz
+# if [ -e ${map_out} ]; then
+#     echo; echo "RAVENS map in subject space for label ${label} exists, skip calculation!"
+# else
+#     ants_apply_inv ${map_in} ${s_file} ${final_invwarp} ${final_affine} ${map_out} ${interp}
+# fi

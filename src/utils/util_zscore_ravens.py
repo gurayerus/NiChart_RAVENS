@@ -1,97 +1,66 @@
-import argparse
-import pandas as pd
-import numpy as np
-import nibabel as nib
+#!/usr/bin/env python3
 import os
+import numpy as np
+import pandas as pd
+import argparse
 
-def calc_zmap(in_list, flag_corr_icv, out_file, thresh_mask=50):
+def util_zscore_ravens(inmap, age, sex, ref_dir, out_file):
     """
-    Compute a voxelwise z-score map for a target image against reference images.
-
-    Parameters
-    ----------
-    in_list : str
-        Path to CSV file with columns [MRID, FileName, ICV].
-        First row = target, remaining rows = references.
-    flag_corr_icv : bool
-        If True, correct images for ICV by scaling with mean reference ICV.
-    out_file : str
-        Path to output z-map NIfTI file.
-    thresh_mask : float, optional
-        Values below this threshold will be set to zero (default: 50).
+    Compute z-scores for an encoded map using reference mean/std maps.
     """
-    # Load CSV
-    df = pd.read_csv(in_list)
-    if df.shape[0] < 2:
-        raise ValueError("CSV must contain at least one target and one reference image.")
+    # load input
+    in_data = np.load(inmap)
+    if "imgvec" not in in_data:
+        raise KeyError(f"{inmap} must contain key 'imgvec'")
+    x = in_data["imgvec"]
 
-    # Separate target and references
-    target_row = df.iloc[0]
-    ref_rows = df.iloc[1:]
+    # read stats list
+    stats_file = os.path.join(ref_dir, "list_stats.csv")
+    stats_df = pd.read_csv(stats_file)
 
-    # Load images
-    D1='/cbica/home/erusg/GitHub/gurayerus/NiChart_RAVENS/tmp/out/test'
-    S1='_Label_1_RAVENS.nii.gz'
-    
-    D2='/cbica/home/erusg/GitHub/gurayerus/NiChart_RAVENS/tmp/ref/CSF-RAVENS'
-    S2='_T1_LPS_dlicv_seg_ants-0.3_RAVENS_1.nii.gz'
-    
-    target_img = nib.load(D1 + '/' + target_row["MRID"] + '/' + target_row["MRID"] + S1)
-    target_data = target_img.get_fdata()
+    # filter by sex
+    df_sex = stats_df[stats_df["Sex"] == sex]
+    if df_sex.empty:
+        raise ValueError(f"No reference found for sex={sex}")
 
-    ref_imgs = [nib.load(D2 + '/' + f + '/' + f + S2) for f in ref_rows["MRID"]]
-    ref_data = np.stack([img.get_fdata() for img in ref_imgs], axis=-1)
+    # find closest age bin
+    df_sex = df_sex.copy()  # avoid SettingWithCopyWarning
+    df_sex["AgeDiff"] = (df_sex["Age"] - age).abs()
+    ref_row = df_sex.loc[df_sex["AgeDiff"].idxmin()]
 
-    #target_img = nib.load(target_row["FileName"])
-    #target_data = target_img.get_fdata()
+    ref_file = ref_row["Filename"]
+    if not os.path.isabs(ref_file):
+        ref_file = os.path.join(ref_dir, ref_file)
 
-    #ref_imgs = [nib.load(f) for f in ref_rows["FileName"]]
-    #ref_data = np.stack([img.get_fdata() for img in ref_imgs], axis=-1)
+    # load reference maps
+    ref_data = np.load(ref_file)
+    mean_map = ref_data["mean"]
+    std_map = ref_data["std"]
 
-    # Apply ICV correction if requested
-    if flag_corr_icv:
-        mean_ref_icv = ref_rows["ICV"].mean()
-        # Correct target
-        target_data = (target_data / target_row["ICV"]) * mean_ref_icv
-        # Correct references
-        ref_data = np.stack(
-            [(ref_data[..., i] / ref_rows.iloc[i]["ICV"]) * mean_ref_icv
-             for i in range(ref_data.shape[-1])],
-            axis=-1
-        )
+    # compute z-scores
+    zmap = (x - mean_map) / (std_map + 1e-8)
 
-    print(ref_data.shape)
+    # save
+    np.savez_compressed(
+        out_file,
+        zmap=zmap,
+        ref_file=ref_file,
+        age=age,
+        sex=sex,
+        mrid=os.path.basename(inmap).split("_")[0]
+    )
+    print(f"Saved z-score map to {out_file}")
 
-    # Compute mean and std from references
-    ref_mean = np.mean(ref_data, axis=-1)
-    ref_std = np.std(ref_data, axis=-1, ddof=1)
+def main():
+    parser = argparse.ArgumentParser(description="Compute z-scores for encoded RAVENS maps.")
+    parser.add_argument("--inmap", required=True, help="Input encoded .npz file")
+    parser.add_argument("--age", type=float, required=True, help="Subject age")
+    parser.add_argument("--sex", required=True, choices=["M", "F"], help="Subject sex")
+    parser.add_argument("--ref_dir", required=True, help="Reference directory containing list_stats.csv")
+    parser.add_argument("--out_file", required=True, help="Output .npz z-score file")
 
-    # Avoid division by zero
-    ref_std[ref_std == 0] = np.nan
-
-    # Compute z-map
-    z_map = (target_data - ref_mean) / ref_std
-
-    # Apply mask threshold
-    z_map[target_data < thresh_mask] = 0
-
-    # Ensure parent directory exists
-    os.makedirs(os.path.dirname(out_file), exist_ok=True)    
-
-    # Save output
-    z_img = nib.Nifti1Image(z_map, affine=target_img.affine, header=target_img.header)
-    nib.save(z_img, out_file)
-
-    print(f"✅ Z-map saved to {out_file}")
+    args = parser.parse_args()
+    util_zscore_ravens(args.inmap, args.age, args.sex, args.ref_dir, args.out_file)
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Compute voxelwise z-score maps from MRI images")
-    parser.add_argument("--in_csv", required=True, help="CSV file with columns [MRID, FileName, ICV] (first row = target)")
-    parser.add_argument("--out_file", required=True, help="Output NIfTI file path for z-map")
-    parser.add_argument("--icv_corr", action="store_true", help="Enable ICV correction")
-    parser.add_argument("--thresh_mask", type=float, default=50, help="Threshold mask (default: 50)")
-    args = parser.parse_args()
-
-    calc_zmap(args.in_csv, args.icv_corr, args.out_file, args.thresh_mask)
-    
-    
+    main()
