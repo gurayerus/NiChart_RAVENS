@@ -12,7 +12,7 @@ def util_zscore_ravens(inmap, age, sex, ref_dir, out_file):
     in_data = np.load(inmap)
     if "imgvec" not in in_data:
         raise KeyError(f"{inmap} must contain key 'imgvec'")
-    x = in_data["imgvec"]
+    x = in_data["imgvec"].astype(float)
 
     # read stats list
     stats_file = os.path.join(ref_dir, "list_stats.csv")
@@ -34,20 +34,26 @@ def util_zscore_ravens(inmap, age, sex, ref_dir, out_file):
 
     # load reference maps
     ref_data = np.load(ref_file)
-    mean_map = ref_data["mean"]
-    std_map = ref_data["std"]
+    mean_map = ref_data["mean"].astype(float)
+    std_map = ref_data["std"].astype(float)
 
     # compute z-scores
     zmap = (x - mean_map) / (std_map + 1e-8)
+    zmap[x==0] = 0
+    zmap[mean_map==0] = 0
+    zmap[std_map==0] = 0
 
     # save
     np.savez_compressed(
         out_file,
+        x=x,
+        mean_map=mean_map,
+        std_map=std_map,
         zmap=zmap,
         ref_file=ref_file,
         age=age,
         sex=sex,
-        mrid=os.path.basename(inmap).split("_")[0]
+        mrid=os.path.basename(inmap).split("_")[0],
     )
     print(f"Saved z-score map to {out_file}")
 

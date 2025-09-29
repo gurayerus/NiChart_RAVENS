@@ -8,7 +8,7 @@ import numpy as np
 from scipy.ndimage import zoom
 from pathlib import Path
 
-def decode_map(in_file, params, out_file, in_field='imgvec'):
+def decode_map(in_file, params, out_file, in_field='imgvec', scale_vals=True):
     """
     Decode an encoded uint16 NIfTI image to the original image space.
 
@@ -19,19 +19,18 @@ def decode_map(in_file, params, out_file, in_field='imgvec'):
         out_file (str): Path to save the decoded NIfTI
         downsample (int or tuple): Downsampling factor used during encoding
     """
+    
     # Load vector
     enc_data = np.load(in_file)[in_field]
-    #enc_data = np.load(in_file)["arr_0"]
     enc_data = enc_data.reshape(params["bbox_ds_size"])
     
-    #enc_img = nib.load(in_file)
-    #enc_data = enc_img.get_fdata()
-    #affine = enc_img.affine
-
-    # Convert back to float using vmin/vmax
-    vmin = params["vmin"]
-    vmax = params["vmax"]
-    data_float = enc_data.astype(np.float32) / 65535 * (vmax - vmin) + vmin
+    if scale_vals:
+        # Convert back to float using vmin/vmax
+        vmin = params["vmin"]
+        vmax = params["vmax"]
+        data_float = enc_data.astype(np.float32) / 65535 * (vmax - vmin) + vmin
+    else:
+        data_float = enc_data.astype(np.float32)
 
     # Upsample back to original bounding box size
     bbox_min = np.array(params["bbox_min"])
@@ -40,6 +39,7 @@ def decode_map(in_file, params, out_file, in_field='imgvec'):
 
     zoom_factors = [s/o for s, o in zip(bbox_size, np.array(data_float.shape))]
     data_upsampled = zoom(data_float, zoom_factors, order=1)
+    #data_upsampled = zoom(data_float, zoom_factors, order=0)
 
     # Place the upsampled crop into full original image
     full_data = np.zeros(params['img_shape'], dtype=np.float32)
@@ -58,6 +58,7 @@ def main():
     parser.add_argument("params", help="params.json")
     parser.add_argument("out_file", help="Output file")
     parser.add_argument("--in_field", default='imgvec', help="Input field")
+    parser.add_argument("--scale_vals", action='store_true', help="Input field")
 
     args = parser.parse_args()
 
@@ -66,7 +67,7 @@ def main():
         params = json.load(f)        
 
     # Encode images
-    decode_map(args.in_file, params, args.out_file, args.in_field)
+    decode_map(args.in_file, params, args.out_file, args.in_field, args.scale_vals)
 
 if __name__ == "__main__":
     main()
