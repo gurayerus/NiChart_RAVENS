@@ -1,22 +1,28 @@
 #! /bin/bash
 
+regtype='test'
+
 ##############################################
 # Set paths to data, template, scripts
 sdir="$(cd ../../src && pwd)"
-indir="$(cd ../output/test && pwd)"
+indir=`cd "../input" && pwd`
+wdir=`cd "../out_csf/warp_${regtype}" && pwd`
 
-mkdir -pv ../output/zscore
-outdir="$(cd ../output/zscore && pwd)"
+mkdir -pv ../out_csf/zscore_${regtype}
+outdir="$(cd ../out_csf/zscore_${regtype} && pwd)"
 
 ##############################################
 ## Set data and template
 
-mrid='subj2'
+mrid='1000017_2_0'
+mrid='1002338_2_0'
 
-img_ravens=${indir}/${mrid}/${mrid}_Label_1_RAVENS.nii.gz
+img_ravens=${wdir}/${mrid}/${mrid}_Label_CSF_RAVENS.nii.gz
 
 outpref="${mrid}_"
 outsub=${outdir}/${mrid}
+
+outimg=${outsub}/${mrid}_CSF_RAVENS_zscored.nii.gz
 
 ##############################################
 # Main 
@@ -27,13 +33,14 @@ mkdir -pv $outsub
 # cd to scripts
 cd $sdir
 
-img_t1=none
-t1=none
-t2=none
+refdir='/cbica/home/erusg/comp_space/GitHub/gurayerus/NiChart_RAVENS/data/ref_data_prep/ukbb/out_csf/stat_maps'
 
-refdir='/cbica/home/erusg/comp_space/GitHub/gurayerus/NiChart_RAVENS/data/ref_data_prep/ukbb/out/stat_maps'
+list=${indir}/${mrid}/list.csv
+age=`tail -1 $list | cut -d, -f2`
+sex=`tail -1 $list | cut -d, -f3`
+icv=`tail -1 $list | cut -d, -f4`
 
 # Run command
-cmd="./calc_abnmap_ants.sh -m $img_ravens -i $img_t1 -t $t1 -t $t2 -r $refdir -o $outsub"
+cmd="./calc_abnmap.sh --in_img $img_ravens --age $age --sex $sex --icv $icv --ref_dir $refdir --out_img $outimg"
 echo "About to run: $cmd"
 $cmd

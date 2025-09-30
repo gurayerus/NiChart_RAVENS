@@ -19,6 +19,8 @@ tmp/
 temp/
 
 # output directory
-test/output
+test/input
+test/out*
 data
+archive
 
