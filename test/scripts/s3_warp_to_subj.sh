@@ -1,6 +1,7 @@
 #! /bin/bash
 
 regtype='test'
+regtype='default'
 
 ##############################################
 # Set paths to data, template, scripts

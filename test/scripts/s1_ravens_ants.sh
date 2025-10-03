@@ -20,8 +20,8 @@ mrid='1002338_2_0'
 t1=${indir}/${mrid}/${mrid}_T1_DLICV.nii.gz
 t1seg=${indir}/${mrid}/${mrid}_T1_DLMUSE.nii.gz
 
-# regtype='default'
-regtype='test'
+regtype='default'
+# regtype='test'
 
 isslurm='yes'
 # isslurm='no'

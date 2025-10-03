@@ -1,6 +1,7 @@
 #! /bin/bash
 
 regtype='test'
+regtype='default'
 
 ##############################################
 # Set paths to data, template, scripts
@@ -33,7 +34,7 @@ mkdir -pv $outsub
 # cd to scripts
 cd $sdir
 
-refdir='/cbica/home/erusg/comp_space/GitHub/gurayerus/NiChart_RAVENS/data/ref_data_prep/ukbb/out_csf/stat_maps'
+refdir="/cbica/home/erusg/comp_space/GitHub/gurayerus/NiChart_RAVENS/data/ref_data_prep/ukbb/out_csf/stat_maps_${regtype}"
 
 list=${indir}/${mrid}/list.csv
 age=`tail -1 $list | cut -d, -f2`

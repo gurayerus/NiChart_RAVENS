@@ -1,79 +1,91 @@
 #! /bin/bash
 
+# NiChart_RAVENS package project folder
+pkg_dir='/cbica/home/erusg/GitHub/gurayerus/NiChart_RAVENS'
+src_dir=${pkg_dir}/src
 
-### check : 1056455_2_0
+#-------------------------------
+# --- Usage ---
+usage() {
+  echo "Usage: $0 <config_file>"
+  exit 1
+}
 
-bdir='/cbica/home/erusg/GitHub/gurayerus/NiChart_RAVENS'
-
-ddir='/cbica/home/erusg/comp_space/GitHub/gurayerus/NiChart_RAVENS/data/ref_data_prep/ukbb'
-
-##############################################
-# Set paths to data, template, scripts
-sdir="$(cd ${bdir}/src && pwd)"
-tdir="$(cd ${bdir}/resources/templates/colin27 && pwd)"
-indir="$(cd ${ddir}/in && pwd)"
-
-mkdir -pv ${ddir}/out_csf
-outdir="$(cd ${ddir}/out_csf && pwd)"
-
-##############################################
-## Set template
-
-tImg=${tdir}/colin27_t1_tal_lin_T1_LPS_dlicv.nii.gz
-
-list=${indir}/lists/list_ref_n200.csv
-
-# regtype='default'
-regtype='test'
-
-isslurm='yes'
-# isslurm='no'
-
-# is_invert='no'
-is_invert='yes'
-
-# labels='auto'
-labels=${bdir}/resources/dictionaries/list_MUSE_derived_CSF.csv
-
-# Update template if user wants to invert image
-if [ "${is_invert}" == 'yes' ]; then
-    tImg=${tImg%.nii.gz}_Inv.nii.gz 
+#-------------------------------
+# --- Check input ---
+if [ $# -ne 1 ]; then
+  usage
 fi
 
-for mrid in $( sed 1d $list | cut -d, -f1 ); do
-# for mrid in $( sed 1d $list | cut -d, -f1 | head -5 ); do
+config_file=$1
+
+if [ ! -f "$config_file" ]; then
+  echo "Error: Config file '$config_file' not found!"
+  exit 1
+fi
+
+#-------------------------------
+# --- Load config ---
+source "$config_file"
+
+conf_dir=$(dirname "$(realpath "$config_file")")
+out_dir=$(dirname `dirname "$(realpath "$config_file")"`)
+
+echo "Running job at $out_dir"
+
+list=${conf_dir}/${list_images}
+
+templ_img=${pkg_dir}/${templ_img}
+if [ ! -z ${label_dict} ]; then
+    label_dict=${pkg_dir}/${label_dict}
+fi
+
+# cd to scripts
+echo "cd to $src_dir"
+cd $src_dir
+
+#-------------------------------
+# --- Run RAVENS Map calculation ---
+for ll in $( sed 1d $list); do
+    mrid=$( echo $ll | cut -d, -f1 )
+    t1_img=$( echo $ll | cut -d, -f2 )
+    label_img=$( echo $ll | cut -d, -f3 )
+
     echo "Calc RAVENS for $mrid"
     
-    t1=${indir}/images/DLICV/${mrid}_T1_DLICV.nii.gz
-    t1seg=${indir}/images/DLMUSE/${mrid}_T1_DLMUSE.nii.gz
+    out_pref="${mrid}_"
+    out_sub=${out_dir}/warp_${regtype}/${mrid}
 
-    outpref="${mrid}_"
-    outsub=${outdir}/warp_${regtype}/${mrid}
-
-    if [ -d $outsub ]; then
-        echo "Skip $mrid"
-    
-    else
-
-        # Create out dir for subject
-        mkdir -pv $outsub
-
-        # cd to scripts
-        cd $sdir
-    
-
-        # Run command
-        if [ "${isslurm}" == 'no' ]; then
-            cmd="./ravens_ants.sh -s $t1 -l ${t1seg} -t ${tImg} -d ${outsub} -p ${outpref} -m ${regtype} -n ${is_invert} -i ${labels}"
-            echo "About to run: $cmd"
-            $cmd
-        else
-            logdir=${outsub}/log_slurm
-            mkdir -pv $logdir
-            cmd="sbatch --output=${logdir}/%x_%j.out --error=${logdir}/%x_%j.err --cpus-per-task=4 --time=08:00:00 --propagate=NONE ./ravens_ants.sh -s $t1 -l ${t1seg} -t ${tImg} -d ${outsub} -p ${outpref} -m ${regtype} -n ${is_invert} -i ${labels}"
-            echo "About to run: $cmd"
-            $cmd
-        fi
+    # Check input / output
+    if [ ! -e ${t1_img} ]; then
+        echo "Missing T1 img, skip: ${t1_img}"
+        continue
     fi
+    if [ ! -e ${label_img} ]; then
+        echo "Missing label img, skip: $label_img"
+        continue
+    fi
+    
+    # Create out dir for subject
+    mkdir -pv $out_sub
+
+    # Run command for each subject
+    cmd="./calc_ravens_ants.sh --source ${t1_img} --label ${label_img} --target ${templ_img} --outdir ${out_sub} --prefix ${out_pref} --mode ${regtype} --invert ${flag_invert}"
+    if [ ! -z ${labels} ]; then
+        cmd="${cmd} --labels ${labels}"
+    fi
+    if [ ! -z ${label_dict} ]; then
+        cmd="${cmd} --labeldict ${label_dict}"
+    fi
+
+    if [ "${flag_slurm}" == 'yes' ]; then
+        logdir=${out_sub}/log_slurm
+        mkdir -pv $logdir
+        cmd="sbatch --output=${logdir}/%x_%j.out --error=${logdir}/%x_%j.err --cpus-per-task=4 --time=08:00:00 --propagate=NONE ${cmd}"
+    fi
+    echo "About to run: $cmd"
+    $cmd
+    
+    read -p ee
 
 done
