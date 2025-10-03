@@ -8,6 +8,7 @@ src_dir=${pkg_dir}/src
 # --- Usage ---
 usage() {
   echo "Usage: $0 <config_file>"
+  echo "Example $0 /cbica/home/erusg/comp_space/GitHub/gurayerus/NiChart_RAVENS/data/ref_data_prep/ukbb/out/ref_csf_ravens_test/config/config_ravens.sh"
   exit 1
 }
 
@@ -54,7 +55,7 @@ for ll in $( sed 1d $list); do
     echo "Calc RAVENS for $mrid"
     
     out_pref="${mrid}_"
-    out_sub=${out_dir}/warp_${regtype}/${mrid}
+    out_sub=${out_dir}/ravens/${mrid}
 
     # Check input / output
     if [ ! -e ${t1_img} ]; then

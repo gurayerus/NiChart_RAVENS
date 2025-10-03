@@ -7,7 +7,7 @@ import nibabel as nib
 import numpy as np
 from scipy.ndimage import zoom
 from pathlib import Path
-
+import pandas as pd
 
 def encode_map(in_file, params, out_file, out_field = 'imgvec'):
     """
@@ -136,28 +136,24 @@ def detect_params(files, out_file, downsample = 2, n_samples=50):
 
 def main():
     parser = argparse.ArgumentParser(description="Encode maps in input folder")
-    parser.add_argument("indir", help="Input directory containing nifti files")
-    parser.add_argument("outdir", help="Output directory for params.json")
-    parser.add_argument("--suffix", default=".nii.gz", help="File suffix (default: .nii.gz)")
+    parser.add_argument("inlist", help="Input list with file names")
+    parser.add_argument("outdir", help="Output directory")
     parser.add_argument("--n_samples", type=int, default=10, help="Number of files to sample")
     parser.add_argument("--downsample", type=int, default=2, help="Downsample factor (default=2)")
 
     args = parser.parse_args()
 
-    indir = Path(args.indir)
     outdir = Path(args.outdir)
 
     # make outdir if needed
     os.makedirs(outdir, exist_ok=True)
 
-    # Collect files recursively
-    files = list(indir.rglob(f"*{args.suffix}"))
-    if not files:
-        raise FileNotFoundError(f"No files with suffix '{suffix}' found in {indir}")
+    # Read list of files
+    df = pd.read_csv(args.inlist)
+    
+    files = df.FileName.tolist()
+    mrids = df.MRID.tolist()
 
-    # Get ids
-    fnames = [os.path.basename(f) for f in files]
-    ids = [str(f).replace(args.suffix, '') for f in fnames]
 
     # Detect parameters
     params_file = os.path.join(args.outdir, "params.json")
@@ -171,7 +167,7 @@ def main():
 
     # Encode images
     for i, fname in enumerate(files):
-        fout = os.path.join(outdir, ids[i] + '_encoded')
+        fout = os.path.join(outdir, mrids[i] + '_encoded')
         if not os.path.exists(fout):
             print(f'Encoding: {fout}')
             encode_map(fname, params, fout)

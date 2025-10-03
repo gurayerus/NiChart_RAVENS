@@ -7,6 +7,7 @@ import nibabel as nib
 import numpy as np
 from scipy.ndimage import zoom
 from pathlib import Path
+import pandas as pd
 
 
 def encode_map(in_file, params, out_file, out_field='imgvec'):
