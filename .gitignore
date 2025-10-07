@@ -19,8 +19,8 @@ tmp/
 temp/
 
 # output directory
-test/input
-test/out*
+##test/input
+##test/out*
 data
 archive
 
