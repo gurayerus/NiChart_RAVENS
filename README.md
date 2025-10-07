@@ -19,7 +19,7 @@ pip install nichart-ravens [FIXME: dependencies ANTs 2.3.1 and Python (nibabel))
  
 ```bash
 cd ./test/scripts
-./testrun_ravens_ants.sh
+./test1.sh
 ```
   
   
