@@ -4,8 +4,11 @@ import argparse
 import numpy as np
 import pandas as pd
 import nibabel as nib
+from pathlib import Path
 
-def calc_stats_npz(df, outdir, agediff=0.5, agestep=1, icv_corr=False, mean_icv=1450000, in_field='imgvec'):
+def calc_stats_npz(
+    roilabel, df, outdir, agediff=0.5, agestep=1, icv_corr=False, mean_icv=1450000, in_field='imgvec'
+):
 
     # Age range
     min_age, max_age = df["Age"].min(), df["Age"].max()
@@ -23,7 +26,7 @@ def calc_stats_npz(df, outdir, agediff=0.5, agestep=1, icv_corr=False, mean_icv=
 
             maps = []
             for _, row in sub_df.iterrows():
-                fname = row['fname']
+                fname = row['FileName']
                 if os.path.exists(fname):
                     data = np.load(fname)[in_field]
                     if icv_corr:
@@ -63,9 +66,11 @@ def calc_stats_npz(df, outdir, agediff=0.5, agestep=1, icv_corr=False, mean_icv=
 
     # build DataFrame
     df_out = pd.DataFrame(records)
-    df_out.to_csv(os.path.join(outdir, "list_stats.csv"), index=False)
+    df_out.to_csv(os.path.join(outdir, f"list_{roilabel}.csv"), index=False)
 
-def calc_stats_nifti(df, outdir, agediff=0.5, agestep=1, icv_corr=False, mean_icv=1450000, in_field='imgvec'):
+def calc_stats_nifti(
+    roilabel, df, outdir, agediff=0.5, agestep=1, icv_corr=False, mean_icv=1450000, in_field='imgvec'
+):
 
     # Age range
     min_age, max_age = df["Age"].min(), df["Age"].max()
@@ -83,12 +88,12 @@ def calc_stats_nifti(df, outdir, agediff=0.5, agestep=1, icv_corr=False, mean_ic
 
             maps = []
             for _, row in sub_df.iterrows():
-                fname = row['fname']
+                fname = row['FileName']
                 if os.path.exists(fname):
                     nii = nib.load(fname)
                     data = nii.get_fdata()
                     dshape = data.shape
-                    data = data.flatten(0
+                    data = data.flatten()
                     if icv_corr:
                         data = data * (mean_icv / row['ICV'])
                     maps.append(data)
@@ -109,11 +114,13 @@ def calc_stats_nifti(df, outdir, agediff=0.5, agestep=1, icv_corr=False, mean_ic
                 label += "_ICV"
 
             # Save outputs
-            out_file_mean = os.path.join(outdir, f"mean_{label}.npz")    
+            ids=sub_df.MRID.to_list()
+
+            out_file_mean = os.path.join(outdir, f"mean_{label}.nii.gz")    
             m_img = nib.Nifti1Image(mean_map, affine=nii.affine, header=nii.header)
             nib.save(m_img, out_file_mean)
 
-            out_file_std = os.path.join(outdir, f"std_{label}.npz")    
+            out_file_std = os.path.join(outdir, f"std_{label}.nii.gz")    
             s_img = nib.Nifti1Image(std_map, affine=nii.affine, header=nii.header)
             nib.save(s_img, out_file_std)
 
@@ -129,11 +136,12 @@ def calc_stats_nifti(df, outdir, agediff=0.5, agestep=1, icv_corr=False, mean_ic
 
     # build DataFrame
     df_out = pd.DataFrame(records)
-    df_out.to_csv(os.path.join(outdir, "list_stats.csv"), index=False)
+    df_out.to_csv(os.path.join(outdir, f"list_{roilabel}.csv"), index=False)
 
     
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Calculate mean/std maps for age-sex bins.")
+    parser.add_argument("label", help="Label for input images")
     parser.add_argument("list_demog", help="CSV with MRID, Age, Sex, ICV")
     parser.add_argument("list_files", help="List with input file names")
     parser.add_argument("outdir", help="Output directory")
@@ -144,6 +152,10 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    list_demog = Path(args.list_demog)
+    list_files = Path(args.list_files)
+    outdir = Path(args.outdir)
+
     os.makedirs(outdir, exist_ok=True)
 
     # Load data
@@ -151,11 +163,11 @@ if __name__ == "__main__":
     df_files = pd.read_csv(list_files)
 
     df = df_demog.merge(df_files, on='MRID')
-    ftmp = df.fnames.tolist()[0]
+    ftmp = df.FileName.tolist()[0]
     
-    if ftmp.ends_with('.npz'):
-        calc_stats_npz(df, args.outdir, args.agediff, args.agestep, args.corr_icv, args.mean_icv)
+    if ftmp.endswith('.npz'):
+        calc_stats_npz(args.label, df, args.outdir, args.agediff, args.agestep, args.corr_icv, args.mean_icv)
         
-    elif ftmp.ends_with('.nii.gz'):
-        calc_stats_nifti(df, args.outdir, args.agediff, args.agestep, args.corr_icv, args.mean_icv)
+    elif ftmp.endswith('.nii.gz'):
+        calc_stats_nifti(args.label, df, args.outdir, args.agediff, args.agestep, args.corr_icv, args.mean_icv)
         

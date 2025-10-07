@@ -26,7 +26,6 @@ def encode_map(in_file, params, out_file, out_field = 'imgvec'):
     """    
     img = nib.load(in_file)
     data = img.get_fdata()
-    #affine = img.affine
 
     # Crop using bounding box
     minc = np.array(params["bbox_min"])
@@ -138,6 +137,7 @@ def main():
     parser = argparse.ArgumentParser(description="Encode maps in input folder")
     parser.add_argument("inlist", help="Input list with file names")
     parser.add_argument("outdir", help="Output directory")
+    parser.add_argument("outsuff", help="Output suffix")    
     parser.add_argument("--n_samples", type=int, default=10, help="Number of files to sample")
     parser.add_argument("--downsample", type=int, default=2, help="Downsample factor (default=2)")
 
@@ -154,7 +154,6 @@ def main():
     files = df.FileName.tolist()
     mrids = df.MRID.tolist()
 
-
     # Detect parameters
     params_file = os.path.join(args.outdir, "params.json")
     if not os.path.exists(params_file):
@@ -167,10 +166,12 @@ def main():
 
     # Encode images
     for i, fname in enumerate(files):
-        fout = os.path.join(outdir, mrids[i] + '_encoded')
+        fout = os.path.join(outdir, mrids[i] + args.outsuff)
         if not os.path.exists(fout):
             print(f'Encoding: {fout}')
             encode_map(fname, params, fout)
+        else:
+            print(f'Output exists, skip: {fout}')
 
 if __name__ == "__main__":
     main()

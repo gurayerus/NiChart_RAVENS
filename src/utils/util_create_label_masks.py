@@ -4,52 +4,50 @@ import numpy as np
 import sys
 import pandas as pd
 
-def read_roi_indices(label_list, dict_file):
+def read_roi_indices(label_list, dict_file=None):
 
-    # Read label dictionary
-    df = pd.read_csv(dict_file, header=None, dtype=str)
+    # Select labels from dictionary
+    try:
+        df = pd.read_csv(dict_file, header=None, dtype=str)
+        df = df[df.iloc[:, 0].isin(label_list)]
+    except:
+        df = pd.DataFrame()
 
-    # Select labels
-    print(df.shape)
-    df = df[df.iloc[:, 0].isin(label_list)]
-    print(df.shape)
-    
-    roi_dict = {}
-    for _, row in df.iterrows():
-        key = row[0]
-        # Drop NaN, convert to int
-        values = row[1:].dropna().astype(int).tolist()
-        roi_dict[key] = values
+    # No dictionary or no match in dictionary, try to use each label as numeric index
+    if df.shape[0] == 0:
+        try:
+            roi_dict = {x.strip(): int(x) for x in label_list}
+        except:
+            roi_dict = {}
+            
+    else:
+        roi_dict = {}
+        for _, row in df.iterrows():
+            key = row[0]
+            # Drop NaN, convert to int
+            values = row[1:].dropna().astype(int).tolist()
+            roi_dict[key] = values
         
     return roi_dict
 
-def util_create_label_masks(label_img, out_prefix, label_list=None, label_dict=None):
+def util_create_label_masks(seg_img, label_list, out_prefix, label_dict=None):
     """
     Create a binary mask for each label
     
     Args:
-        label_img (str): Path to segmentation image
+        seg_img (str): Path to segmentation image
+        label_list (list of int or str): Labels to process
         out_prefix (str): Output prefix
-        label_list (list of int, optional): Labels to process; if None, process all labels except 0
         label_dict (list of int, optional): Label dict
     """
     # Load images
-    seg_nii = nib.load(label_img)
+    seg_nii = nib.load(seg_img)
 
     seg_data = seg_nii.get_fdata()
 
     # Determine roi labels
-    if label_list is None:              # Detect labels from image (all non-zero labels)
-        labels = np.unique(seg_data).astype(int)
-        labels = labels[labels != 0]
-        roi_dict = {str(x): x for x in labels}
-
-    else:
-        if label_dict is None:          # Use label list given by user
-            roi_dict = {x.strip(): int(x) for x in label_list.split(",")}
-        else:                           # Use label list and label dictionary given by user
-            labels = [x for x in label_list.split(",")]
-            roi_dict = read_roi_indices(labels, label_dict)
+    labels = [x for x in label_list.split(",")]
+    roi_dict = read_roi_indices(labels, label_dict)
         
     if len(roi_dict) == 0:
         print("No target labels found!")
@@ -76,11 +74,11 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Create binary masks for labels")
-    parser.add_argument("label_img", help="Segmentation image (NIfTI)")
+    parser.add_argument("seg_img", help="Segmentation image (NIfTI)")
+    parser.add_argument("labels", help="List of labels to process (e.g. 1,2 or GM,WM)")
     parser.add_argument("out_prefix", help="Output prefix")
-    parser.add_argument("--labels", default=None, help="List of labels to process (default: none, detect all non-zero labels)")
     parser.add_argument("--labeldict", default=None, help="Label dictionary to detect indices for labels (default: not used)")
 
     args = parser.parse_args()
 
-    util_create_label_masks(args.label_img, args.out_prefix, args.labels, args.labeldict)
+    util_create_label_masks(args.seg_img, args.labels, args.out_prefix, args.labeldict)

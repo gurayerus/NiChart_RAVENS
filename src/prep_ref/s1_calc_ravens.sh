@@ -47,6 +47,7 @@ cd $src_dir
 
 #-------------------------------
 # --- Run RAVENS Map calculation ---
+# for ll in $( sed 1d $list | head -2); do
 for ll in $( sed 1d $list); do
     mrid=$( echo $ll | cut -d, -f1 )
     t1_img=$( echo $ll | cut -d, -f2 )
@@ -69,6 +70,19 @@ for ll in $( sed 1d $list); do
     
     # Create out dir for subject
     mkdir -pv $out_sub
+    
+    # Check output
+    flagout='1'
+    for nn in $( echo $labels | sed 's/,/ /g'); do
+        fout=${out_sub}/${out_pref}Label_${nn}_RAVENS.nii.gz
+        if [ ! -e $fout ]; then
+            flagout='0'
+        fi
+    done
+    if [ ${flagout} == '1' ]; then
+        echo "Output exists, skip: $mrid"
+        continue;
+    fi
 
     # Run command for each subject
     cmd="./calc_ravens_ants.sh --source ${t1_img} --label ${label_img} --target ${templ_img} --outdir ${out_sub} --prefix ${out_pref} --mode ${regtype} --invert ${flag_invert}"
@@ -87,6 +101,23 @@ for ll in $( sed 1d $list); do
     echo "About to run: $cmd"
     $cmd
     
-    read -p ee
+# #     read -p ee
 
 done
+
+#-------------------------------
+# --- Make list of ravens  ---
+for roi in $( echo $labels | sed 's/,/ /g' ); do
+    list_ravens=${out_dir}/ravens/list_${roi}.csv
+    
+    if [ ! -e $list_ravens ]; then
+        echo MRID,FileName > $list_ravens
+        for mrid in $(sed 1d $list | cut -d, -f1 ); do
+            fname=${out_dir}/ravens/${mrid}/${mrid}_Label_${roi}_RAVENS.nii.gz
+            if [ -e ${fname} ]; then
+                echo $mrid,${fname}
+            fi >> $list_ravens
+        done
+    fi
+done
+

@@ -5,7 +5,7 @@ import pandas as pd
 import argparse
 import nibabel as nib
 
-def util_zscore_ravens_npz(inmap, age, sex, ref_dir, out_file):
+def util_zscore_ravens_npz(inmap, age, sex, ref_list, out_file):
     """
     Compute z-scores for an encoded map using reference mean/std maps.
     """
@@ -16,8 +16,7 @@ def util_zscore_ravens_npz(inmap, age, sex, ref_dir, out_file):
     x = in_data["imgvec"].astype(float)
         
     # Read stats list
-    stats_file = os.path.join(ref_dir, "list_stats.csv")
-    stats_df = pd.read_csv(stats_file)
+    stats_df = pd.read_csv(ref_list)
 
     # filter by sex
     df_sex = stats_df[stats_df["Sex"] == sex]
@@ -30,8 +29,6 @@ def util_zscore_ravens_npz(inmap, age, sex, ref_dir, out_file):
     ref_row = df_sex.loc[df_sex["AgeDiff"].idxmin()]
 
     ref_file = ref_row["npz"]
-    if not os.path.isabs(ref_file):
-        ref_file = os.path.join(ref_dir, ref_file)
     ref_data = np.load(ref_file)
     mean_map = ref_data["mean"].astype(float)
     std_map = ref_data["std"].astype(float)
@@ -56,7 +53,7 @@ def util_zscore_ravens_npz(inmap, age, sex, ref_dir, out_file):
     )
     print(f"Saved z-score map to {out_file}")
 
-def util_zscore_ravens_nifti(inmap, age, sex, ref_dir, out_file):
+def util_zscore_ravens_nifti(inmap, age, sex, ref_list, out_file):
     """
     Compute z-scores for a nifti image using reference mean/std maps.
     """
@@ -67,8 +64,7 @@ def util_zscore_ravens_nifti(inmap, age, sex, ref_dir, out_file):
     x = in_data.flatten()
 
     # Read stats list
-    stats_file = os.path.join(ref_dir, "list_stats.csv")
-    stats_df = pd.read_csv(stats_file)
+    stats_df = pd.read_csv(ref_list)
 
     # filter by sex
     df_sex = stats_df[stats_df["Sex"] == sex]
@@ -98,6 +94,11 @@ def util_zscore_ravens_nifti(inmap, age, sex, ref_dir, out_file):
     zmap[mean_map==0] = 0
     zmap[std_map==0] = 0
 
+    zmap = zmap.reshape(in_shape)
+    #print('aaa')
+    #print(zmap.shape)
+    #return
+
     # Save
     z_img = nib.Nifti1Image(zmap, affine=in_nii.affine, header=in_nii.header)
     nib.save(z_img, out_file)
@@ -108,16 +109,16 @@ def main():
     parser.add_argument("--inmap", required=True, help="Input encoded .npz file")
     parser.add_argument("--age", type=float, required=True, help="Subject age")
     parser.add_argument("--sex", required=True, choices=["M", "F"], help="Subject sex")
-    parser.add_argument("--ref_dir", required=True, help="Reference directory containing list_stats.csv")
+    parser.add_argument("--ref_list", required=True, help="Reference list")
     parser.add_argument("--out_file", required=True, help="Output .npz z-score file")
 
     args = parser.parse_args()
     
-    if args.inmap.ends_with('.npz'):
-        util_zscore_ravens_npz(args.inmap, args.age, args.sex, args.ref_dir, args.out_file)
-    elif args.inmap.ends_with('.nii.gz'):
-        util_zscore_ravens_nifti(args.inmap, args.age, args.sex, args.ref_dir, args.out_file)
-
+    if args.inmap.endswith('.npz'):
+        util_zscore_ravens_npz(args.inmap, args.age, args.sex,args.ref_list, args.out_file)
+        
+    elif args.inmap.endswith('.nii.gz'):
+        util_zscore_ravens_nifti(args.inmap, args.age, args.sex,args.ref_list, args.out_file)
 
 if __name__ == "__main__":
     main()
