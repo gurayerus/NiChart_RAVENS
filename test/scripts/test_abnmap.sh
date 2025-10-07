@@ -5,7 +5,7 @@ pwd=`pwd`
 mrid='subju'
 
 din=${pwd}/../input
-dout=${pwd}/../out/test
+dout=${pwd}/../output/test
 
 t1=${din}/${mrid}/${mrid}_T1_DLICV.nii.gz
 t1seg=${din}/${mrid}/${mrid}_T1_DLMUSE.nii.gz
