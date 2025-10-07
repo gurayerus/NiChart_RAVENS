@@ -8,7 +8,7 @@ src_dir=${pkg_dir}/src
 # --- Usage ---
 usage() {
   echo "Usage: $0 <config_file>"
-  echo "Example $0 /cbica/home/erusg/comp_space/GitHub/gurayerus/NiChart_RAVENS/data/ref_data_prep/ukbb/out/ref_csf_ravens_test/config/config_stats.sh"  
+  echo "Example $0 ref_csf_ravens_test/config/config_stats.sh"  
   exit 1
 }
 
