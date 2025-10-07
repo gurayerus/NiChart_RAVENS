@@ -2,25 +2,24 @@
 
 pwd=`pwd`
 
-din=${pwd}/../input
-dout=${pwd}/../out_test3
+mrid='subju'
 
-mrid='1000017_2_0'
-# mrid='1002338_2_0'
+din=${pwd}/../input
+dout=${pwd}/../out/test
 
 t1=${din}/${mrid}/${mrid}_T1_DLICV.nii.gz
 t1seg=${din}/${mrid}/${mrid}_T1_DLMUSE.nii.gz
 
-regtype='default'
+# regtype='default'
 regtype='test'
 
-isslurm='yes'
-# isslurm='no'
+# isslurm='yes'
+isslurm='no'
 
 outpref="${mrid}_"
 
-labels='CSF,GM,WM'
-labels='81,82,83,47'
+# labels='CSF,GM,WM'
+# labels='81,82,83,47'
 labels='CSF'
 
 ##############################################
