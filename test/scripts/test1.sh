@@ -3,7 +3,7 @@
 pwd=`pwd`
 
 din=${pwd}/../input
-dout=${pwd}/../out_test1
+dout=${pwd}/../out_test3
 
 mrid='1000017_2_0'
 # mrid='1002338_2_0'
@@ -33,7 +33,8 @@ mkdir -pv $dout
 cd ../../src
 
 # Run command
-cmd="./nichart_abnmap.sh --in_img $t1 --in_seg ${t1seg} --labels ${labels} --out_dir ${dout} --out_prefix ${outpref} --reg_mode test"
+cmd="./nichart_abnmap.sh --in_img $t1 --in_seg ${t1seg} --labels ${labels} --out_dir ${dout} --out_prefix ${outpref} --reg_mode test --age 55 --sex F --icv_mask ${t1seg}"
+
 
 # if [ "${isslurm}" == 'yes' ]; then
 #     logdir=${outsub}/log_slurm

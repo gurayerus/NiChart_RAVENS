@@ -44,12 +44,15 @@ usage() {
   echo "  --roi_dict <path>       ROI dictionary file (default: none)"
   echo "  --ref_dir <path>        Reference directory (default: none)"
   echo "  --reg_mode <str>        Registration mode (default: default)"
+  echo "  --age <int>             Subject's age (default: none)"
+  echo "  --sex <str>             Subject's sex (F or M, default: none)"
+  echo "  --icv_mask <int>        Mask to calculate intra-cranial volume (default: none)"
   echo
   echo "Example:"
   echo "  $0 --in_img subj01_T1.nii.gz --in_seg subj01_labels.nii.gz \\"
   echo "     --labels GM,WM --out_dir results --out_prefix subj01_ \\"
   echo "     --template template.nii.gz --ref_dir ./refdata"
-  echo "     --reg_mode test"
+  echo "     --reg_mode test --age 55 --sex F --icv_mask subj01_labels.nii.gz"
   echo
   exit 1
 }
@@ -60,8 +63,10 @@ usage() {
 # Default values
 template="${RES_PATH}/templates/colin27/colin27_t1_tal_lin_T1_LPS_dlicv.nii.gz"
 roi_dict="${RES_PATH}/dictionaries/list_MUSE_derived.csv"
-ref_dir="${RES_PATH}/refmodels/ref_csf_ravens_test"
+ref_dir="${RES_PATH}/refmodels/ref_csf_ravens_test/stats_encoded"
 reg_mode='default'
+ref_type='npz'
+mean_icv='1450000'
 
 # Parse long options
 while [[ $# -gt 0 ]]; do
@@ -76,6 +81,9 @@ while [[ $# -gt 0 ]]; do
     --roi_dict) roi_dict="$2"; shift 2;;
     --ref_dir) ref_dir="$2"; shift 2;;
     --reg_mode) reg_mode="$2"; shift 2;;
+    --age) age="$2"; shift 2;;
+    --sex) sex="$2"; shift 2;;
+    --icv_mask) icv_mask="$2"; shift 2;;
     -h|--help) usage;;
     *) echo "Unknown option: $1"; usage;;
   esac
@@ -111,15 +119,18 @@ mkdir -p "$out_dir"
 # ===============================
 echo "Running nichart_abnmap with the following parameters:"
 echo "  in_img      = $in_img"
-echo "  in_seg   = $in_seg"
-echo "  labels        = $labels"
+echo "  in_seg      = $in_seg"
+echo "  labels      = $labels"
 echo "  out_dir     = $out_dir"
 echo "  out_prefix  = $out_prefix"
 echo "  template    = $template"
 echo "  flag_invert = $flag_invert"
 echo "  roi_dict    = $roi_dict"
 echo "  ref_dir     = $ref_dir"
-echo "  reg_mode     = $reg_mode"
+echo "  reg_mode    = $reg_mode"
+echo "  age         = $age"
+echo "  sex         = $sex"
+echo "  icv_mask    = $icv_mask"
 echo
 
 # Create a folder with init images
@@ -226,63 +237,69 @@ done
 #     fi
 # done
 
-roi='CSF'
-age='55'
-sex='F'
-
-ref_type='npz'
-ref_list=${ref_dir}/stats_encoded/list_${roi}.csv
-ref_params="${ref_dir}/stats_encoded/params.json"
-
-in_ravens=${out_dir}/${out_prefix}Label_${label}_RAVENS.nii.gz
-
-if [ "$ref_type" == 'npz' ]; then
-
-    # ---------------------------
-    # Encode input ravens
-    encoded_dir="${out_dir}/encoded"
-    mkdir -pv $encoded_dir
-    out_encoded=${encoded_dir}/ravens_encoded.npz
-    if [ -e ${out_encoded} ]; then
-        echo; echo "Encoded img exists, skip calculation!"
-    else
-        cmd="python3 utils/util_encode_ravens.py ${in_ravens} ${ref_params} ${out_encoded}"
-        echo; echo "Running: $cmd"
-        $cmd
-    fi
-
-    # ---------------------------
-    # Apply z-score
-    out_zscore=${out_dir}/${out_prefix}ABNMAP_${roi}.npz
-    if [ -e ${out_zscore} ]; then
-        echo; echo "Zscore img exists, skip calculation!"
-    else
-        cmd="python3 utils/util_zscore_ravens.py --inmap ${out_encoded} --age $age --sex $sex --ref_list ${ref_list} --out_file ${out_zscore}"
-        echo; echo "Running: $cmd"
-        $cmd
-    fi
-
-    # ---------------------------
-    # Decode z-score map
-    out_img=${out_dir}/${out_prefix}ABNMAP_${roi}.nii.gz
-    if [ -e ${out_img} ]; then
-        echo; echo "Decoded img exists, skip calculation!"
-    else
-        cmd="python3 utils/util_decode_ravens.py ${out_zscore} ${ref_params} ${out_img} --in_field zmap"
-        echo; echo "Running: $cmd"
-        $cmd
-    fi
-
-else
-    # ---------------------------
-    # Apply z-score
-    out_zscore=${out_dir}/ravens_zscore.nii.gz
-    if [ -e ${out_zscore} ]; then
-        echo; echo "Zscore img exists, skip calculation!"
-    else
-        cmd="python3 utils/util_zscore_ravens.py --inmap ${in_img} --age $age --sex $sex --ref_list ${ref_list} --out_file ${out_zscore}"
-        echo; echo "Running: $cmd"
-        $cmd
-    fi
+# Calculate abnormality maps
+if [[ -z age || -z sex ]]; then
+    echo "Age and Sex info not provided, skip calculation of abnormality map"
+    exit;
 fi
+
+for roi in $(echo $labels | sed 's/,/ /g'); do
+
+    echo "Calculating abnormality map for: ${roi}"
+
+    ref_list="${ref_dir}/list_${roi}.csv"
+    ref_params="${ref_dir}/params.json"
+
+    in_ravens=${out_dir}/${out_prefix}Label_${label}_RAVENS.nii.gz
+
+    if [ "$ref_type" == 'npz' ]; then
+
+        # ---------------------------
+        # Encode input ravens
+        encoded_dir="${out_dir}/encoded"
+        mkdir -pv $encoded_dir
+        out_encoded=${encoded_dir}/ravens_encoded.npz
+        if [ -e ${out_encoded} ]; then
+            echo; echo "Encoded img exists, skip calculation!"
+        else
+            cmd="python3 utils/util_encode_ravens.py ${in_ravens} ${ref_params} ${out_encoded}"
+            echo; echo "Running: $cmd"
+            $cmd
+        fi
+
+        # ---------------------------
+        # Apply z-score
+        out_zscore=${out_dir}/${out_prefix}ABNMAP_${roi}.npz
+        if [ -e ${out_zscore} ]; then
+            echo; echo "Zscore img exists, skip calculation!"
+        else
+            cmd="python3 utils/util_zscore_ravens.py --inmap ${out_encoded} --age $age --sex $sex --ref_list ${ref_list} --out_file ${out_zscore} --icv_mask ${in_seg}"
+            echo; echo "Running: $cmd"
+            $cmd
+        fi
+
+        # ---------------------------
+        # Decode z-score map
+        out_img=${out_dir}/${out_prefix}ABNMAP_${roi}.nii.gz
+        if [ -e ${out_img} ]; then
+            echo; echo "Decoded img exists, skip calculation!"
+        else
+            cmd="python3 utils/util_decode_ravens.py ${out_zscore} ${ref_params} ${out_img} --in_field zmap"
+            echo; echo "Running: $cmd"
+            $cmd
+        fi
+
+    else
+        # ---------------------------
+        # Apply z-score
+        out_zscore=${out_dir}/ravens_zscore.nii.gz
+        if [ -e ${out_zscore} ]; then
+            echo; echo "Zscore img exists, skip calculation!"
+        else
+            cmd="python3 utils/util_zscore_ravens.py --inmap ${in_img} --age $age --sex $sex --ref_list ${ref_list} --out_file ${out_zscore} --icv_mask ${in_seg}"
+            echo; echo "Running: $cmd"
+            $cmd
+        fi
+    fi
+done
 
