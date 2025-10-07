@@ -22,6 +22,9 @@ outpref="${mrid}_"
 # labels='81,82,83,47'
 labels='CSF'
 
+age=48
+sex=F
+
 ##############################################
 # Main 
 
@@ -32,7 +35,7 @@ mkdir -pv $dout
 cd ../../src
 
 # Run command
-cmd="./nichart_abnmap.sh --in_img $t1 --in_seg ${t1seg} --labels ${labels} --out_dir ${dout} --out_prefix ${outpref} --reg_mode test --age 55 --sex F --icv_mask ${t1seg}"
+cmd="./nichart_abnmap.sh --in_img $t1 --in_seg ${t1seg} --labels ${labels} --out_dir ${dout} --out_prefix ${outpref} --reg_mode test --age $age --sex $sex --icv_mask ${t1seg}"
 
 
 # if [ "${isslurm}" == 'yes' ]; then

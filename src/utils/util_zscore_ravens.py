@@ -23,6 +23,9 @@ def util_zscore_ravens_npz(inmap, age, sex, ref_list, out_file, icv = None):
         x = x * MEAN_ICV / icv
         print(f'Correcting values for ICV ({icv})')
         
+    # Reference data path
+    ref_dir = os.path.dirname(ref_list)
+
     # Read stats list
     stats_df = pd.read_csv(ref_list)
 
@@ -36,7 +39,7 @@ def util_zscore_ravens_npz(inmap, age, sex, ref_list, out_file, icv = None):
     df_sex["AgeDiff"] = (df_sex["Age"] - age).abs()
     ref_row = df_sex.loc[df_sex["AgeDiff"].idxmin()]
 
-    ref_file = ref_row["npz"]
+    ref_file = os.path.join(ref_dir, ref_row["npz"])
     ref_data = np.load(ref_file)
     mean_map = ref_data["mean"].astype(float)
     std_map = ref_data["std"].astype(float)
@@ -75,6 +78,9 @@ def util_zscore_ravens_nifti(inmap, age, sex, ref_list, out_file, icv=None):
     if icv is not None:
         x = x * MEAN_ICV / icv
 
+    # Reference data path
+    ref_dir = os.path.dirname(ref_list)
+
     # Read stats list
     stats_df = pd.read_csv(ref_list)
 
@@ -88,13 +94,13 @@ def util_zscore_ravens_nifti(inmap, age, sex, ref_list, out_file, icv=None):
     df_sex["AgeDiff"] = (df_sex["Age"] - age).abs()
     ref_row = df_sex.loc[df_sex["AgeDiff"].idxmin()]
 
-    mean_file = ref_row["mean"]
+    mean_file = os.path.join(ref_dir, ref_row["mean"])
     if not os.path.isabs(mean_file):
         mean_file = os.path.join(ref_dir, mean_file)
     mean_nii = nib.load(mean_file)
     mean_map = mean_nii.get_fdata().flatten()
         
-    std_file = ref_row["std"]
+    std_file = os.path.join(ref_dir, ref_row["std"])
     if not os.path.isabs(std_file):
         std_file = os.path.join(ref_dir, std_file)
     std_nii = nib.load(std_file)
