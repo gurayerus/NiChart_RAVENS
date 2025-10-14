@@ -77,8 +77,8 @@ if __name__ == "__main__":
     parser.add_argument("seg_img", help="Segmentation image (NIfTI)")
     parser.add_argument("labels", help="List of labels to process (e.g. 1,2 or GM,WM)")
     parser.add_argument("out_prefix", help="Output prefix")
-    parser.add_argument("--labeldict", default=None, help="Label dictionary to detect indices for labels (default: not used)")
+    parser.add_argument("--label_dict", default=None, help="Label dictionary to detect indices for labels (default: not used)")
 
     args = parser.parse_args()
 
-    util_create_label_masks(args.seg_img, args.labels, args.out_prefix, args.labeldict)
+    util_create_label_masks(args.seg_img, args.labels, args.out_prefix, args.label_dict)

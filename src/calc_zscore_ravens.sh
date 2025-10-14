@@ -10,14 +10,13 @@ usage() {
   echo "  --in_img     Input image file (NIfTI, encoded npz, etc.)"
   echo "  --age        Subject age (float)"
   echo "  --sex        Subject sex (M or F)"
-  echo "  --icv        Intracranial volume (float)"
   echo "  --dtype      Reference data type (npz or nifti)"
   echo "  --ref_list   List of reference data"
   echo "  --params     Parameters for encoding (only necessary for npz ref data)"
   echo "  --out_img    Output image filename"
   echo
   echo "Example:"
-  echo "  $0 --in_img subj01_encoded.npz --age 62.5 --sex F --icv 1450 --dtype npz --ref_list ./ref_stats/list_CSF.csv --params ./ref_stats/params.json --out_img subj01_abnmap.npz"
+  echo "  $0 --in_img subj01_encoded.npz --age 62.5 --sex F --dtype npz --ref_list ./ref_stats/list_CSF.csv --params ./ref_stats/params.json --out_img subj01_abnmap.npz"
   exit 1
 }
 
@@ -30,7 +29,6 @@ while [[ $# -gt 0 ]]; do
     --in_img) in_img="$2"; shift; shift ;;
     --age) age="$2"; shift; shift ;;
     --sex) sex="$2"; shift; shift ;;
-    --icv) icv="$2"; shift; shift ;;
     --label) label="$2"; shift; shift ;;
     --dtype) dtype="$2"; shift; shift ;;
     --ref_list) ref_list="$2"; shift; shift ;;
@@ -44,7 +42,7 @@ done
 # -------------------------
 # Check required arguments
 # -------------------------
-if [[ -z "$in_img" || -z "$age" || -z "$sex" || -z "$icv" || -z "$dtype" || -z "$ref_list" || -z "$out_img" ]]; then
+if [[ -z "$in_img" || -z "$age" || -z "$sex" || -z "$dtype" || -z "$ref_list" || -z "$out_img" ]]; then
   echo "Error: Missing required argument."
   usage
 fi
@@ -61,7 +59,8 @@ if [ "$dtype" == 'npz' ]; then
 
     # ---------------------------
     # Encode input ravens
-    out_encoded=${out_dir}/ravens_encoded.npz
+    mkdir -pv "${out_dir}/encoded"
+    out_encoded=${out_dir}/encoded/ravens_encoded.npz
     if [ -e ${out_encoded} ]; then
         echo; echo "Encoded img exists, skip calculation!"
     else
@@ -72,7 +71,7 @@ if [ "$dtype" == 'npz' ]; then
 
     # ---------------------------
     # Apply z-score
-    out_zscore=${out_dir}/ravens_zscore.npz
+    out_zscore=${out_dir}/encoded/ravens_zscore.npz
     if [ -e ${out_zscore} ]; then
         echo; echo "Zscore img exists, skip calculation!"
     else
@@ -94,11 +93,10 @@ if [ "$dtype" == 'npz' ]; then
 else
     # ---------------------------
     # Apply z-score
-    out_zscore=${out_dir}/ravens_zscore.nii.gz
-    if [ -e ${out_zscore} ]; then
+    if [ -e ${out_img} ]; then
         echo; echo "Zscore img exists, skip calculation!"
     else
-        cmd="python3 utils/util_zscore_ravens.py --inmap ${in_img} --age $age --sex $sex --ref_list ${ref_list} --out_file ${out_zscore}"
+        cmd="python3 utils/util_zscore_ravens.py --inmap ${in_img} --age $age --sex $sex --ref_list ${ref_list} --out_file ${out_img}"
         echo; echo "Running: $cmd"
         $cmd
     fi

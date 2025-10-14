@@ -5,10 +5,7 @@ import pandas as pd
 import argparse
 import nibabel as nib
 
-# Mean ICV value (constant)
-MEAN_ICV=1450000
-
-def util_zscore_ravens_npz(inmap, age, sex, ref_list, out_file, icv = None):
+def util_zscore_ravens_npz(inmap, age, sex, ref_list, out_file):
     """
     Compute z-scores for an encoded map using reference mean/std maps.
     """
@@ -18,11 +15,6 @@ def util_zscore_ravens_npz(inmap, age, sex, ref_list, out_file, icv = None):
         raise KeyError(f"{inmap} must contain key 'imgvec'")
     x = in_data["imgvec"].astype(float)
     
-    # Correct ICV
-    if icv is not None:
-        x = x * MEAN_ICV / icv
-        print(f'Correcting values for ICV ({icv})')
-        
     # Reference data path
     ref_dir = os.path.dirname(ref_list)
 
@@ -64,7 +56,7 @@ def util_zscore_ravens_npz(inmap, age, sex, ref_list, out_file, icv = None):
     )
     print(f"Saved z-score map to {out_file}")
 
-def util_zscore_ravens_nifti(inmap, age, sex, ref_list, out_file, icv=None):
+def util_zscore_ravens_nifti(inmap, age, sex, ref_list, out_file):
     """
     Compute z-scores for a nifti image using reference mean/std maps.
     """
@@ -73,10 +65,6 @@ def util_zscore_ravens_nifti(inmap, age, sex, ref_list, out_file, icv=None):
     in_data = in_nii.get_fdata()
     in_shape = in_data.shape
     x = in_data.flatten()
-
-    # Correct ICV
-    if icv is not None:
-        x = x * MEAN_ICV / icv
 
     # Reference data path
     ref_dir = os.path.dirname(ref_list)
@@ -129,25 +117,14 @@ def main():
     parser.add_argument("--sex", required=True, choices=["M", "F"], help="Subject sex")
     parser.add_argument("--ref_list", required=True, help="Reference list")
     parser.add_argument("--out_file", required=True, help="Output .npz z-score file")
-    parser.add_argument("--icv_mask", required=False, default=None, help="Mask to calculate intra-cranial volume")
 
     args = parser.parse_args()
 
-    # Compute ICV value
-    icv = None
-    if args.icv_mask is not None:
-        nii_icv = nib.load(args.icv_mask)
-        img_icv = nii_icv.get_fdata()
-        vox_dims = nii_icv.header.get_zooms()[:3]
-        vox_vol = np.prod(vox_dims)
-        n_voxels = np.count_nonzero(img_icv )
-        icv = n_voxels * vox_vol
-    
     if args.inmap.endswith('.npz'):
-        util_zscore_ravens_npz(args.inmap, args.age, args.sex,args.ref_list, args.out_file, icv)
+        util_zscore_ravens_npz(args.inmap, args.age, args.sex,args.ref_list, args.out_file)
         
     elif args.inmap.endswith('.nii.gz'):
-        util_zscore_ravens_nifti(args.inmap, args.age, args.sex,args.ref_list, args.out_file, icv)
+        util_zscore_ravens_nifti(args.inmap, args.age, args.sex,args.ref_list, args.out_file)
 
 if __name__ == "__main__":
     main()

@@ -40,50 +40,74 @@ list=${conf_dir}/${list_demog}
 echo "cd to $src_dir"
 cd $src_dir
 
-ravens_dir=${out_dir}/ravens
-encode_dir=${out_dir}/encoded
-
-# #-------------------------------
-# # --- Encode data ---
-echo "Encoding scans ..."
-for roi in $( echo $labels | sed 's/,/ /g' ); do
-    list_ravens=${ravens_dir}/list_${roi}.csv
-    encode_suff="_${roi}_encoded.npz"
-    cmd="python ./utils/util_refdata_encode.py ${list_ravens} ${encode_dir} ${encode_suff} --n_samples ${nsamples}"
-    echo "About to run: $cmd"
-    $cmd
-done
+# Set suffix for init ravens
+# ICV correction
+if [ ${flag_icvcorr} == 'yes' ]; then
+    rsuffix='_RAVENS_ICVNorm.nii.gz'
+else
+    rsuffix='_RAVENS_ICVNorm.nii.gz'
+fi
 
 #-------------------------------
-# --- Make list of encoded  ---
-echo "Making list of encoded scans ..."
+# --- Make list of ravens  ---
+ravens_dir=${out_dir}/ravens
+echo "Making list of ravens ..."
 for roi in $( echo $labels | sed 's/,/ /g' ); do
-    list_encoded=${encode_dir}/list_${roi}.csv
+    list_ravens=${out_dir}/ravens/list_${roi}.csv
     
-    if [ ! -e $list_encoded ]; then
-        echo MRID,FileName > $list_encoded
+    if [ ! -e $list_ravens ]; then
+        echo MRID,FileName > $list_ravens
         for mrid in $(sed 1d $list | cut -d, -f1 ); do
-            fname=${encode_dir}/${mrid}${encode_suff}
+            fname=${out_dir}/ravens/${mrid}/${mrid}_Label_${roi}${rsuffix}
             if [ -e ${fname} ]; then
                 echo $mrid,${fname}
-            fi >> $list_encoded
+            fi >> $list_ravens
         done
     fi
 done
 
+# # #-------------------------------
+# # # --- Encode data ---
+# encode_dir=${out_dir}/encoded
+# echo "Encoding scans ..."
+# for roi in $( echo $labels | sed 's/,/ /g' ); do
+#     list_ravens=${ravens_dir}/list_${roi}.csv
+#     encode_suff="_${roi}_encoded.npz"
+#     cmd="python ./utils/util_refdata_encode.py ${list_ravens} ${encode_dir} ${encode_suff} --n_samples ${nsamples}"
+#     echo "About to run: $cmd"
+#     $cmd
+# done
+# 
 # #-------------------------------
-# # --- Calculate stats (encoded) ---
-stats_dir=${out_dir}/stats_encoded
-echo "Creating stat maps ..."
-for roi in $( echo $labels | sed 's/,/ /g' ); do
-    list_stats=${stats_dir}/list_${roi}.csv
-    list_encoded=${encode_dir}/list_${roi}.csv
-    if [ ! -e ${list_stats} ]; then
-        cmd="python ./utils/util_refdata_get_stats.py $roi $list $list_encoded ${stats_dir} --agediff $agediff --agestep $agestep --corr_icv"
-        echo "About to run: $cmd"
-        $cmd
-    fi
-done
+# # --- Make list of encoded  ---
+# echo "Making list of encoded scans ..."
+# for roi in $( echo $labels | sed 's/,/ /g' ); do
+#     list_encoded=${encode_dir}/list_${roi}.csv
+#     
+#     if [ ! -e $list_encoded ]; then
+#         echo MRID,FileName > $list_encoded
+#         for mrid in $(sed 1d $list | cut -d, -f1 ); do
+#             fname=${encode_dir}/${mrid}${encode_suff}
+#             if [ -e ${fname} ]; then
+#                 echo $mrid,${fname}
+#             fi >> $list_encoded
+#         done
+#     fi
+# done
+# 
+# # #-------------------------------
+# # # --- Calculate stats (encoded) ---
+# stats_dir=${out_dir}/stats_npz
+# echo "Creating stat maps ..."
+# for roi in $( echo $labels | sed 's/,/ /g' ); do
+#     list_stats=${stats_dir}/list_${roi}.csv
+#     list_encoded=${encode_dir}/list_${roi}.csv
+#     if [ ! -e ${list_stats} ]; then
+#         cmd="python ./utils/util_refdata_get_stats.py $roi $list $list_encoded ${stats_dir} --agediff $agediff --agestep $agestep"
+#         echo "About to run: $cmd"
+#         $cmd
+#     fi
+# done
 
 # #-------------------------------
 # # --- Calculate stats (nifti) ---
@@ -93,7 +117,7 @@ for roi in $( echo $labels | sed 's/,/ /g' ); do
     list_stats=${stats_dir}/list_${roi}.csv
     list_ravens=${ravens_dir}/list_${roi}.csv
     if [ ! -e ${list_stats} ]; then
-        cmd="python ./utils/util_refdata_get_stats.py $roi $list $list_ravens ${stats_dir} --agediff $agediff --agestep $agestep --corr_icv"
+        cmd="python ./utils/util_refdata_get_stats.py $roi $list $list_ravens ${stats_dir} --agediff $agediff --agestep $agestep"
         echo "About to run: $cmd"
         $cmd
     fi

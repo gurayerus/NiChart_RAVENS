@@ -26,10 +26,18 @@ set -e
 export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=4
 
 # Get absolute path to the folder containing this script
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# SCRIPT_DIR="$(dirname "$(realpath "$0")")"
+SCRIPT_DIR=$(pwd)
 
 # Define paths relative to the script location
 RES_PATH="${SCRIPT_DIR}/../resources"
+
+# echo $0
+# echo `realpath $0`
+# echo `pwd`
+# echo 'Bye ...'
+# exit;
+
 
 # ===============================
 #   Usage and Help
@@ -41,7 +49,8 @@ usage() {
   echo "Optional arguments:"
   echo "  --template <path>       Template image file (default: none)"
   echo "  --flag_invert <bool>    Whether to invert intensities (default: false)"
-  echo "  --roi_dict <path>       ROI dictionary file (default: none)"
+  echo "  --flag_keep_temp <bool> Whether to keep temp output (default: false)"
+  echo "  --label_dict <path>     ROI dictionary file (default: none)"
   echo "  --ref_dir <path>        Reference directory (default: none)"
   echo "  --reg_mode <str>        Registration mode (default: default)"
   echo "  --age <int>             Subject's age (default: none)"
@@ -62,11 +71,15 @@ usage() {
 # ===============================
 # Default values
 template="${RES_PATH}/templates/colin27/colin27_t1_tal_lin_T1_LPS_dlicv.nii.gz"
-roi_dict="${RES_PATH}/dictionaries/list_MUSE_derived.csv"
-ref_dir="${RES_PATH}/refmodels/ref_csf_ravens_test/stats_encoded"
+label_dict="${RES_PATH}/dictionaries/list_MUSE_derived.csv"
 reg_mode='default'
-ref_type='npz'
-mean_icv='1450000'
+
+ref_dir="${RES_PATH}/refmodels/ref_ravens_test/stats_encoded"
+ref_dir="${RES_PATH}/refmodels/ref_ravens_test/stats_nifti"
+
+flag_invert='no'
+flag_keep_temp='no'
+icv_mask='none'
 
 # Parse long options
 while [[ $# -gt 0 ]]; do
@@ -78,7 +91,9 @@ while [[ $# -gt 0 ]]; do
     --out_prefix) out_prefix="$2"; shift 2;;
     --template) template="$2"; shift 2;;
     --flag_invert) flag_invert="$2"; shift 2;;
-    --roi_dict) roi_dict="$2"; shift 2;;
+    --flag_keep_temp) flag_keep_temp="$2"; shift 2;;
+    --flag_icvcorr) flag_icvcorr="$2"; shift 2;;
+    --label_dict) label_dict="$2"; shift 2;;
     --ref_dir) ref_dir="$2"; shift 2;;
     --reg_mode) reg_mode="$2"; shift 2;;
     --age) age="$2"; shift 2;;
@@ -89,12 +104,23 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+# Check type of reference data (nifti or npz--compressed)
+ref_type=${ref_dir##*_}
+
 # ===============================
 #   Validate Required Inputs
 # ===============================
 if [[ -z "$in_img" || -z "$in_seg" || -z "$labels" || -z "$out_dir" || -z "$out_prefix" ]]; then
   echo "Error: Missing one or more required arguments."
   usage
+fi
+
+# Invert template
+if [[ "$flag_invert" == "yes" ]]; then
+    if [[ "$template" != *_Inv.nii.gz ]]; then
+        template="${template%.nii.gz}_Inv.nii.gz"
+        echo "Warning: Template name should end with _Inv.nii.gz; renaming template"
+    fi
 fi
 
 # ===============================
@@ -107,6 +133,15 @@ fi
 if [ ! -f "$in_seg" ]; then
     echo "Error: Input segmentation mask does not exist: $in_seg" >&2
     exit 1
+fi
+if [ ! -f "$template" ]; then
+    echo "Error: Template image does not exist: $template" >&2
+    exit 1
+fi
+
+flag_icvcorr='no'
+if [ ! -z ${icv_mask} ]; then
+    flag_icvcorr='yes'
 fi
 
 # ===============================
@@ -121,185 +156,91 @@ echo "Running nichart_abnmap with the following parameters:"
 echo "  in_img      = $in_img"
 echo "  in_seg      = $in_seg"
 echo "  labels      = $labels"
+echo "  template    = $template"
 echo "  out_dir     = $out_dir"
 echo "  out_prefix  = $out_prefix"
-echo "  template    = $template"
 echo "  flag_invert = $flag_invert"
-echo "  roi_dict    = $roi_dict"
+echo "  label_dict  = $label_dict"
 echo "  ref_dir     = $ref_dir"
 echo "  reg_mode    = $reg_mode"
 echo "  age         = $age"
 echo "  sex         = $sex"
+echo "  flag_icvcorr = $flag_icvcorr"
 echo "  icv_mask    = $icv_mask"
 echo
 
-# Create a folder with init images
-init_dir="${out_dir}/init"
-mkdir -p ${init_dir}
-
-if [ ! -e ${init_dir}/${out_prefix}T1.nii.gz ]; then
-    ln -sv $in_img ${init_dir}/${out_prefix}T1.nii.gz
+#-------------------------------
+# --- Calculate RAVENS ---
+cmd="./calc_ravens_ants.sh --in_img ${in_img} --in_seg ${in_seg} --labels ${labels} --template ${template} --out_dir ${out_dir} --out_prefix ${out_prefix} --reg_mode ${reg_mode} --flag_invert ${flag_invert}"
+if [ ! -z ${label_dict} ]; then
+    cmd="${cmd} --label_dict ${label_dict}"
 fi
-if [ ! -e ${init_dir}/${out_prefix}Labels.nii.gz ]; then
-    ln -sv $in_seg ${init_dir}/${out_prefix}Labels.nii.gz
+if [ ${flag_icvcorr} == 'yes' ]; then
+    cmd="${cmd} --icv_mask ${icv_mask}"
 fi
-if [ ! -e ${init_dir}/Template.nii.gz ]; then
-    ln -sv $template ${init_dir}/Template.nii.gz
-fi
+echo "About to run: $cmd"
+$cmd
 
-# Create a mask image for each label
-label_dir="${out_dir}/labels"
-mkdir -p "$label_dir"
-if [ -e ${label_dir}/${out_prefix}Label_List.csv ]; then
-    echo; echo "Label masks exists, skip calculation!"
-else
-    cmd="python3 utils/util_create_label_masks.py ${in_seg} ${labels} ${label_dir}/${out_prefix}Label_"
-    if [ ${roi_dict} != 'none' ]; then
-        cmd="${cmd} --labeldict ${roi_dict}"
-    fi
-    echo; echo "Running: $cmd"
-    $cmd
-fi
-
-# Invert image intensities
-if [ "${invert}" == 'yes' ]; then
-    final_inv=${init_dir}/${out_prefix}Inv.nii.gz
-    cmd="python3 utils/util_invert_img.py ${in_img} ${final_inv}"
-    echo; echo "Running: $cmd"
-    $cmd
-    in_img=${final_inv}
-fi
-
-# Apply ANTs
-source ./utils/util_ants.sh
-
-warp_dir="${out_dir}/warps"
-mkdir -p "$warp_dir"
-final_warped=${warp_dir}/${out_prefix}Warped.nii.gz
-final_warp=${warp_dir}/${out_prefix}1Warp.nii.gz
-final_invwarp=${warp_dir}/${out_prefix}1InverseWarp.nii.gz
-final_affine=${warp_dir}/${out_prefix}0GenericAffine.mat
-if [ -e ${final_warped} ] && [ -e ${final_warp} ] && [ -e ${final_invwarp} ] && [ -e ${final_affine} ]; then
-    echo; echo "ANTs results exist, skip ANTs registration!"
-else
-    ants_reg ${reg_mode} ${template} ${in_img} ${warp_dir}/${out_prefix}
-fi
-
-# Calculate deformation
-final_def=${warp_dir}/${out_prefix}Def.nii.gz
-if [ -e ${final_def} ]; then
-    echo; echo "Deformation exists, skip ANTs registration!"
-else
-    ants_compose ${final_warp} ${final_affine} ${template} ${final_def}
-fi
-
-# Create jacobian
-final_jac=${warp_dir}/${out_prefix}Jacobian.nii.gz
-if [ -e ${final_jac} ]; then
-    echo; echo "Jacobian exists, skip calculation!"
-else
-    ants_calc_jacdet ${final_def} ${final_jac}
-fi
-
-# Warp label masks
-interp='Linear'
-for label in $(cat ${label_dir}/${out_prefix}Label_List.csv); do
-    label_in=${label_dir}/${out_prefix}Label_${label}.nii.gz
-    label_out=${label_dir}/${out_prefix}Label_${label}_warped.nii.gz
-    if [ -e ${label_out} ]; then
-        echo; echo "Warped label ${label} exists, skip calculation!"
-    else
-        ants_apply ${label_in} ${final_def} ${template} ${interp} ${label_out}
-    fi
-done
-
-# Calculate RAVENS
-interp='Linear'
-for label in $(cat ${label_dir}/${out_prefix}Label_List.csv); do
-    label_in=${label_dir}/${out_prefix}Label_${label}_warped.nii.gz
-    label_out=${out_dir}/${out_prefix}Label_${label}_RAVENS.nii.gz
-    if [ -e ${label_out} ]; then
-        echo; echo "RAVENS map for label ${label} exists, skip calculation!"
-    else
-        python3 utils/util_multiply_images.py ${label_in} ${final_jac} ${label_out}
-    fi
-done
-
-# # Warp RAVENS back to subj space
-# interp='Linear'
-# for label in $(cat ${label_dir}/${out_prefix}Label_List.csv); do
-#     label_in=${out_dir}/${out_prefix}Label_${label}_RAVENS.nii.gz
-#     label_out=${out_dir}/${out_prefix}Label_${label}_RAVENS_InSubj.nii.gz
-#     if [ -e ${label_out} ]; then
-#         echo; echo "RAVENS map in subject space for label ${label} exists, skip calculation!"
-#     else
-#         ants_apply_inv ${label_in} ${in_img} ${final_invwarp} ${final_affine} ${label_out} ${interp}
-#     fi
-# done
-
-# Calculate abnormality maps
+#-----------------------------------
+# --- Calculate abnormality maps ---
 if [[ -z age || -z sex ]]; then
     echo "Age and Sex info not provided, skip calculation of abnormality map"
     exit;
 fi
 
-for roi in $(echo $labels | sed 's/,/ /g'); do
+if [ ${flag_icvcorr} == 'yes' ]; then
+    suff="_RAVENS_ICVNorm"
+else
+    suff="_RAVENS"
+fi
 
-    echo "Calculating abnormality map for: ${roi}"
+for label in $(echo $labels | sed 's/,/ /g'); do
 
-    ref_list="${ref_dir}/list_${roi}.csv"
+    echo; echo "Calculating abnormality map for: ${roi}"
+
+    ref_list="${ref_dir}/list_${label}.csv"
     ref_params="${ref_dir}/params.json"
 
-    in_ravens=${out_dir}/${out_prefix}Label_${label}_RAVENS.nii.gz
+    in_tmp=${out_dir}/${out_prefix}Label_${label}${suff}.nii.gz
+    out_tmp=${out_dir}/${out_prefix}Label_${label}${suff}_zScored.nii.gz
 
-    if [ "$ref_type" == 'npz' ]; then
+    cmd="./calc_zscore_ravens.sh --in_img ${in_tmp} --age ${age} --sex ${sex} --label ${label} --dtype ${ref_type} --ref_list ${ref_list} --params ${ref_params} --out_img ${out_tmp}"
+    echo "About to run: $cmd"
+    $cmd
 
-        # ---------------------------
-        # Encode input ravens
-        encoded_dir="${out_dir}/encoded"
-        mkdir -pv $encoded_dir
-        out_encoded=${encoded_dir}/ravens_encoded.npz
-        if [ -e ${out_encoded} ]; then
-            echo; echo "Encoded img exists, skip calculation!"
-        else
-            cmd="python3 utils/util_encode_ravens.py ${in_ravens} ${ref_params} ${out_encoded}"
-            echo; echo "Running: $cmd"
-            $cmd
-        fi
-
-        # ---------------------------
-        # Apply z-score
-        out_zscore=${out_dir}/${out_prefix}ABNMAP_${roi}.npz
-        if [ -e ${out_zscore} ]; then
-            echo; echo "Zscore img exists, skip calculation!"
-        else
-            cmd="python3 utils/util_zscore_ravens.py --inmap ${out_encoded} --age $age --sex $sex --ref_list ${ref_list} --out_file ${out_zscore} --icv_mask ${in_seg}"
-            echo; echo "Running: $cmd"
-            $cmd
-        fi
-
-        # ---------------------------
-        # Decode z-score map
-        out_img=${out_dir}/${out_prefix}ABNMAP_${roi}.nii.gz
-        if [ -e ${out_img} ]; then
-            echo; echo "Decoded img exists, skip calculation!"
-        else
-            cmd="python3 utils/util_decode_ravens.py ${out_zscore} ${ref_params} ${out_img} --in_field zmap"
-            echo; echo "Running: $cmd"
-            $cmd
-        fi
-
-    else
-        # ---------------------------
-        # Apply z-score
-        out_zscore=${out_dir}/ravens_zscore.nii.gz
-        if [ -e ${out_zscore} ]; then
-            echo; echo "Zscore img exists, skip calculation!"
-        else
-            cmd="python3 utils/util_zscore_ravens.py --inmap ${in_img} --age $age --sex $sex --ref_list ${ref_list} --out_file ${out_zscore} --icv_mask ${in_seg}"
-            echo; echo "Running: $cmd"
-            $cmd
-        fi
-    fi
 done
+
+# Source ants utils
+source ./utils/util_ants.sh
+
+for label in $(echo $labels | sed 's/,/ /g'); do
+    interp='Linear'
+
+    echo; echo "Warping abnormality map to subject: ${label}"
+
+    in_tmp=${out_dir}/${out_prefix}Label_${label}${suff}_zScored.nii.gz
+    out_tmp=${out_dir}/${out_prefix}Label_${label}${suff}_zScored_inSubj.nii.gz
+    def_invwarp=${out_dir}/warps/${out_prefix}1InverseWarp.nii.gz
+    def_affine=${out_dir}/warps/${out_prefix}0GenericAffine.mat
+    if [ -e ${out_tmp} ]; then
+        echo; echo "RAVENS map in subject space for label ${label} exists, skip calculation!"
+    else
+        cmd="ants_apply_inv ${in_tmp} ${in_img} ${def_invwarp} ${def_affine} ${out_tmp} ${interp}"
+        echo; echo "Running: $cmd"
+        $cmd
+    fi
+
+done
+
+if [ "${flag_keep_temp}" == 'no' ]; then
+    rm -rf ${out_dir}/warps
+    echo; echo "Removed temp folder: ${out_dir}/warps"
+    
+    rm -rf ${out_dir}/init
+    echo; echo "Removed temp folder: ${out_dir}/init"
+    
+    rm -rf ${out_dir}/labels
+    echo; echo "Removed temp folder: ${out_dir}/labels"
+
+fi
 

@@ -1,5 +1,7 @@
 #! /bin/bash
 
+trap "stty sane; echo; exit" INT
+
 # NiChart_RAVENS package project folder
 pkg_dir='/cbica/home/erusg/GitHub/gurayerus/NiChart_RAVENS'
 src_dir=${pkg_dir}/src
@@ -52,6 +54,12 @@ for ll in $( sed 1d $list); do
     mrid=$( echo $ll | cut -d, -f1 )
     t1_img=$( echo $ll | cut -d, -f2 )
     label_img=$( echo $ll | cut -d, -f3 )
+    icv_mask=$( echo $ll | cut -d, -f4 )
+
+    if [[ -z ${t1_img} || -z ${label_img} || -z ${icv_mask} ]]; then
+        echo "Empty file name in list, skip $mrid"
+        continue
+    fi
 
     echo "Calc RAVENS for $mrid"
     
@@ -74,7 +82,11 @@ for ll in $( sed 1d $list); do
     # Check output
     flagout='1'
     for nn in $( echo $labels | sed 's/,/ /g'); do
-        fout=${out_sub}/${out_pref}Label_${nn}_RAVENS.nii.gz
+        if [ ${flag_icvcorr} == 'yes' ]; then
+            fout=${out_sub}/${out_pref}Label_${nn}_RAVENS_ICVNorm.nii.gz
+        else
+            fout=${out_sub}/${out_pref}Label_${nn}_RAVENS.nii.gz
+        fi
         if [ ! -e $fout ]; then
             flagout='0'
         fi
@@ -85,13 +97,13 @@ for ll in $( sed 1d $list); do
     fi
 
     # Run command for each subject
-    cmd="./calc_ravens_ants.sh --source ${t1_img} --label ${label_img} --target ${templ_img} --outdir ${out_sub} --prefix ${out_pref} --mode ${regtype} --invert ${flag_invert}"
-    if [ ! -z ${labels} ]; then
-        cmd="${cmd} --labels ${labels}"
-    fi
+    cmd="./calc_ravens_ants.sh --in_img ${t1_img} --in_seg ${label_img} --labels ${labels} --template ${templ_img} --out_dir ${out_sub} --out_prefix ${out_pref} --reg_mode ${regtype} --flag_invert ${flag_invert} --flag_del_warps ${flag_del_warps}"
     if [ ! -z ${label_dict} ]; then
-        cmd="${cmd} --labeldict ${label_dict}"
+        cmd="${cmd} --label_dict ${label_dict}"
     fi
+    if [ ${flag_icvcorr} == 'yes' ]; then
+        cmd="${cmd} --icv_mask ${icv_mask}"
+    fi    
 
     if [ "${flag_slurm}" == 'yes' ]; then
         logdir=${out_sub}/log_slurm
@@ -101,23 +113,7 @@ for ll in $( sed 1d $list); do
     echo "About to run: $cmd"
     $cmd
     
-# #     read -p ee
+#     read -p ee
 
-done
-
-#-------------------------------
-# --- Make list of ravens  ---
-for roi in $( echo $labels | sed 's/,/ /g' ); do
-    list_ravens=${out_dir}/ravens/list_${roi}.csv
-    
-    if [ ! -e $list_ravens ]; then
-        echo MRID,FileName > $list_ravens
-        for mrid in $(sed 1d $list | cut -d, -f1 ); do
-            fname=${out_dir}/ravens/${mrid}/${mrid}_Label_${roi}_RAVENS.nii.gz
-            if [ -e ${fname} ]; then
-                echo $mrid,${fname}
-            fi >> $list_ravens
-        done
-    fi
 done
 

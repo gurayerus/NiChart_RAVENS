@@ -6,12 +6,7 @@ import pandas as pd
 import nibabel as nib
 from pathlib import Path
 
-# Mean ICV value (constant)
-MEAN_ICV=1450000
-
-def calc_stats_npz(
-    roilabel, df, outdir, agediff=0.5, agestep=1, icv_corr=False, in_field='imgvec'
-):
+def calc_stats_npz(roilabel, df, outdir, agediff=0.5, agestep=1, in_field='imgvec'):
 
     # Age range
     min_age, max_age = df["Age"].min(), df["Age"].max()
@@ -32,8 +27,6 @@ def calc_stats_npz(
                 fname = row['FileName']
                 if os.path.exists(fname):
                     data = np.load(fname)[in_field]
-                    if icv_corr:
-                        data = data * (MEAN_ICV / row['ICV'])
                     maps.append(data)
 
             if not maps:
@@ -44,9 +37,7 @@ def calc_stats_npz(
             std_map = maps.std(axis=0).round().astype('uint16')
 
             # Label
-            label = f"Age{bin_center}_Sex{sex}"
-            if icv_corr:
-                label += "_ICV"
+            label = f"Label{roilabel}_Age{bin_center}_Sex{sex}"
 
             # Save outputs
             out_file = os.path.join(outdir, f"stats_{label}.npz")
@@ -71,9 +62,7 @@ def calc_stats_npz(
     df_out = pd.DataFrame(records)
     df_out.to_csv(os.path.join(outdir, f"list_{roilabel}.csv"), index=False)
 
-def calc_stats_nifti(
-    roilabel, df, outdir, agediff=0.5, agestep=1, icv_corr=False, in_field='imgvec'
-):
+def calc_stats_nifti(roilabel, df, outdir, agediff=0.5, agestep=1, in_field='imgvec'):
 
     # Age range
     min_age, max_age = df["Age"].min(), df["Age"].max()
@@ -97,8 +86,6 @@ def calc_stats_nifti(
                     data = nii.get_fdata()
                     dshape = data.shape
                     data = data.flatten()
-                    if icv_corr:
-                        data = data * (MEAN_ICV / row['ICV'])
                     maps.append(data)
 
             if not maps:
@@ -112,9 +99,7 @@ def calc_stats_nifti(
             std_map = std_map.reshape(dshape)
 
             # Label
-            label = f"Age{bin_center}_Sex{sex}"
-            if icv_corr:
-                label += "_ICV"
+            label = f"Label{roilabel}_Age{bin_center}_Sex{sex}"
 
             # Save outputs
             ids=sub_df.MRID.to_list()
@@ -145,12 +130,11 @@ def calc_stats_nifti(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Calculate mean/std maps for age-sex bins.")
     parser.add_argument("label", help="Label for input images")
-    parser.add_argument("list_demog", help="CSV with MRID, Age, Sex, ICV")
+    parser.add_argument("list_demog", help="CSV with MRID, Age, Sex")
     parser.add_argument("list_files", help="List with input file names")
     parser.add_argument("outdir", help="Output directory")
     parser.add_argument("--agediff", type=float, default=0.5, help="Half-width of age bin")
     parser.add_argument("--agestep", type=float, default=1, help="Step size for sliding bins")
-    parser.add_argument("--corr_icv", action="store_true", help="Enable ICV correction")
 
     args = parser.parse_args()
 
@@ -168,8 +152,8 @@ if __name__ == "__main__":
     ftmp = df.FileName.tolist()[0]
     
     if ftmp.endswith('.npz'):
-        calc_stats_npz(args.label, df, args.outdir, args.agediff, args.agestep, args.corr_icv)
+        calc_stats_npz(args.label, df, args.outdir, args.agediff, args.agestep)
         
     elif ftmp.endswith('.nii.gz'):
-        calc_stats_nifti(args.label, df, args.outdir, args.agediff, args.agestep, args.corr_icv)
+        calc_stats_nifti(args.label, df, args.outdir, args.agediff, args.agestep)
         

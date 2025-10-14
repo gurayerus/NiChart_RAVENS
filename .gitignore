@@ -20,7 +20,10 @@ temp/
 
 # output directory
 ##test/input
-##test/out*
+test/out*
+test/tmp*
+test/*tmp
+resources/refmodels
 data
 archive
 
