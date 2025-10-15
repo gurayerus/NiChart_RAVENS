@@ -97,13 +97,10 @@ for ll in $( sed 1d $list); do
     fi
 
     # Run command for each subject
-    cmd="./calc_ravens_ants.sh --in_img ${t1_img} --in_seg ${label_img} --labels ${labels} --template ${templ_img} --out_dir ${out_sub} --out_prefix ${out_pref} --reg_mode ${regtype} --flag_invert ${flag_invert} --flag_del_warps ${flag_del_warps}"
+    cmd="./calc_ravens_ants.sh --in_img ${t1_img} --icv_mask ${icv_mask} --in_seg ${label_img} --labels ${labels} --template ${templ_img} --out_dir ${out_sub} --out_prefix ${out_pref} --reg_mode ${regtype} --flag_invert ${flag_invert} --flag_del_warps ${flag_del_warps} --flag_del_tmp ${flag_del_tmp}"
     if [ ! -z ${label_dict} ]; then
         cmd="${cmd} --label_dict ${label_dict}"
     fi
-    if [ ${flag_icvcorr} == 'yes' ]; then
-        cmd="${cmd} --icv_mask ${icv_mask}"
-    fi    
 
     if [ "${flag_slurm}" == 'yes' ]; then
         logdir=${out_sub}/log_slurm
@@ -113,7 +110,7 @@ for ll in $( sed 1d $list); do
     echo "About to run: $cmd"
     $cmd
     
-#     read -p ee
+    read -p ee
 
 done
 
