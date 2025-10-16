@@ -234,7 +234,7 @@ for label in $(echo $labels | sed 's/,/ /g'); do
 
 done
 
-if [ "${flag_del_temp}" == 'yes' ]; then
+if [ "${flag_del_tmp}" == 'yes' ]; then
     rm -rf ${out_dir}/warps
     echo; echo "Removed temp folder: ${out_dir}/warps"
     
