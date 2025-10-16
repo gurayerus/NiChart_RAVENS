@@ -59,7 +59,9 @@ for roi in $( echo $labels | sed 's/,/ /g' ); do
         echo MRID,FileName > $list_ravens
         for mrid in $(sed 1d $list | cut -d, -f1 ); do
             fname=${out_dir}/ravens/${mrid}/${mrid}_Label_${roi}${rsuffix}
-            if [ -e ${fname} ]; then
+            if [ ! -e ${fname} ]; then
+                echo "Warning: could not find file: $fname"
+            else
                 echo $mrid,${fname}
             fi >> $list_ravens
         done
