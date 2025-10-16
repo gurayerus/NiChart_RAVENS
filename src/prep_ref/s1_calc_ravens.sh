@@ -110,7 +110,7 @@ for ll in $( sed 1d $list); do
     echo "About to run: $cmd"
     $cmd
     
-    read -p ee
+#     read -p ee
 
 done
 
