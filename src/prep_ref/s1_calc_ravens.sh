@@ -82,11 +82,7 @@ for ll in $( sed 1d $list); do
     # Check output
     flagout='1'
     for nn in $( echo $labels | sed 's/,/ /g'); do
-        if [ ${flag_icvcorr} == 'yes' ]; then
-            fout=${out_sub}/${out_pref}Label_${nn}_RAVENS_ICVNorm.nii.gz
-        else
-            fout=${out_sub}/${out_pref}Label_${nn}_RAVENS.nii.gz
-        fi
+        fout=${out_sub}/${out_pref}Label_${nn}_RAVENS_ICVNorm.nii.gz
         if [ ! -e $fout ]; then
             flagout='0'
         fi

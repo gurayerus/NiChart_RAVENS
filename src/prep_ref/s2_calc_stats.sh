@@ -45,7 +45,7 @@ cd $src_dir
 if [ ${flag_icvcorr} == 'yes' ]; then
     rsuffix='_RAVENS_ICVNorm.nii.gz'
 else
-    rsuffix='_RAVENS_ICVNorm.nii.gz'
+    rsuffix='_RAVENS.nii.gz'
 fi
 
 #-------------------------------
