@@ -112,6 +112,20 @@ for f in "$in_img" "$icv_mask" "$in_seg" "$template"; do
   fi
 done
 
+# Check output
+flagout='1'
+for nn in $( echo $labels | sed 's/,/ /g'); do
+    fout=${out_dir}/${prefix}Label_${label}_RAVENS_ICVNorm.nii.gz
+    if [ ! -e $fout ]; then
+        flagout='0'
+    fi
+done
+if [ ${flagout} == '1' ]; then
+    echo "Output exists, aborting"
+    exit;
+fi
+
+
 # Create a folder with init images
 init_dir="${out_dir}/init"
 mkdir -p "$init_dir"
