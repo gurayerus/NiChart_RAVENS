@@ -126,9 +126,6 @@ if [ ${flagout} == '1' ]; then
     exit;
 fi
 
-echo $flagout
-read -p ee
-
 # Create a folder with init images
 init_dir="${out_dir}/init"
 mkdir -p "$init_dir"
