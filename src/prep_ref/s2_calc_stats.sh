@@ -55,6 +55,8 @@ echo "Making list of ravens ..."
 for roi in $( echo $labels | sed 's/,/ /g' ); do
     list_ravens=${out_dir}/ravens/list_${roi}.csv
     
+    echo List for $roi  : $list_ravens
+
     if [ ! -e $list_ravens ]; then
         echo MRID,FileName > $list_ravens
         echo $list
