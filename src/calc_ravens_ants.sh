@@ -116,7 +116,7 @@ done
 echo "Checking output ..."
 flagout='1'
 for nn in $( echo $labels | sed 's/,/ /g'); do
-    fout=${out_dir}/${prefix}Label_${label}_RAVENS_ICVNorm.nii.gz
+    fout=${out_dir}/${prefix}Label_${label}RAVENS_ICVNorm.nii.gz
     if [ ! -e $fout ]; then
         echo "  Out img: $fout"
         flagout='0'
