@@ -49,7 +49,7 @@ usage() {
   echo "Optional arguments:"
   echo "  --template <path>       Template image file (default: none)"
   echo "  --flag_invert <bool>    Whether to invert intensities (default: false)"
-  echo "  --flag_keep_temp <bool> Whether to keep temp output (default: false)"
+  echo "  --flag_del_tmp <bool>   Whether to delete temp output (default: false)"
   echo "  --label_dict <path>     ROI dictionary file (default: none)"
   echo "  --ref_dir <path>        Reference directory (default: none)"
   echo "  --reg_mode <str>        Registration mode (default: default)"
@@ -78,7 +78,7 @@ ref_dir="${RES_PATH}/refmodels/ref_ravens_test/stats_encoded"
 ref_dir="${RES_PATH}/refmodels/ref_ravens_test/stats_nifti"
 
 flag_invert='no'
-flag_keep_temp='no'
+flag_del_tmp='no'
 icv_mask='none'
 
 # Parse long options
@@ -91,7 +91,7 @@ while [[ $# -gt 0 ]]; do
     --out_prefix) out_prefix="$2"; shift 2;;
     --template) template="$2"; shift 2;;
     --flag_invert) flag_invert="$2"; shift 2;;
-    --flag_keep_temp) flag_keep_temp="$2"; shift 2;;
+    --flag_del_tmp) flag_del_tmp="$2"; shift 2;;
     --flag_icvcorr) flag_icvcorr="$2"; shift 2;;
     --label_dict) label_dict="$2"; shift 2;;
     --ref_dir) ref_dir="$2"; shift 2;;
@@ -167,6 +167,8 @@ echo "  age         = $age"
 echo "  sex         = $sex"
 echo "  flag_icvcorr = $flag_icvcorr"
 echo "  icv_mask    = $icv_mask"
+echo "  flag_del_tmp = $flag_del_tmp"
+
 echo
 
 #-------------------------------
@@ -232,7 +234,7 @@ for label in $(echo $labels | sed 's/,/ /g'); do
 
 done
 
-if [ "${flag_keep_temp}" == 'no' ]; then
+if [ "${flag_del_temp}" == 'yes' ]; then
     rm -rf ${out_dir}/warps
     echo; echo "Removed temp folder: ${out_dir}/warps"
     

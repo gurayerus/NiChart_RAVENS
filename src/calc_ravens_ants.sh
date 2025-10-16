@@ -52,6 +52,7 @@ reg_mode='default'
 label_dict='none'
 flag_invert='no'
 flag_del_warps='no'
+flag_del_tmp='no'
 
 # parse options with getopt
 OPTS=$(getopt -o "" -l in_img:,icv_mask:,in_seg:,labels:,template:,out_dir:,out_prefix:,reg_mode:,label_dict:,flag_invert:,flag_del_warps:,flag_del_tmp:,help -n "$0" -- "$@")
