@@ -149,6 +149,7 @@ if __name__ == "__main__":
     df_files = pd.read_csv(list_files)
 
     df = df_demog.merge(df_files, on='MRID')
+    
     ftmp = df.FileName.tolist()[0]
     
     if ftmp.endswith('.npz'):

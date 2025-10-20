@@ -59,61 +59,57 @@ for roi in $( echo $labels | sed 's/,/ /g' ); do
 
     if [ ! -e $list_ravens ]; then
         echo MRID,FileName > $list_ravens
-        echo $list
         for mrid in $(sed 1d $list | cut -d, -f1 ); do
             fname=${out_dir}/ravens/${mrid}/${mrid}_Label_${roi}${rsuffix}
-            echo "Subject: ${mrid} , ${fname}"
-            if [ ! -e ${fname} ]; then
-                echo "Warning: could not find file: $fname"
-            else
+            if [ -e ${fname} ]; then
                 echo $mrid,${fname}
             fi >> $list_ravens
         done
     fi
 done
 
-# # #-------------------------------
-# # # --- Encode data ---
-# encode_dir=${out_dir}/encoded
-# echo "Encoding scans ..."
-# for roi in $( echo $labels | sed 's/,/ /g' ); do
-#     list_ravens=${ravens_dir}/list_${roi}.csv
-#     encode_suff="_${roi}_encoded.npz"
-#     cmd="python ./utils/util_refdata_encode.py ${list_ravens} ${encode_dir} ${encode_suff} --n_samples ${nsamples}"
-#     echo "About to run: $cmd"
-#     $cmd
-# done
-# 
 # #-------------------------------
-# # --- Make list of encoded  ---
-# echo "Making list of encoded scans ..."
-# for roi in $( echo $labels | sed 's/,/ /g' ); do
-#     list_encoded=${encode_dir}/list_${roi}.csv
-#     
-#     if [ ! -e $list_encoded ]; then
-#         echo MRID,FileName > $list_encoded
-#         for mrid in $(sed 1d $list | cut -d, -f1 ); do
-#             fname=${encode_dir}/${mrid}${encode_suff}
-#             if [ -e ${fname} ]; then
-#                 echo $mrid,${fname}
-#             fi >> $list_encoded
-#         done
-#     fi
-# done
-# 
-# # #-------------------------------
-# # # --- Calculate stats (encoded) ---
-# stats_dir=${out_dir}/stats_npz
-# echo "Creating stat maps ..."
-# for roi in $( echo $labels | sed 's/,/ /g' ); do
-#     list_stats=${stats_dir}/list_${roi}.csv
-#     list_encoded=${encode_dir}/list_${roi}.csv
-#     if [ ! -e ${list_stats} ]; then
-#         cmd="python ./utils/util_refdata_get_stats.py $roi $list $list_encoded ${stats_dir} --agediff $agediff --agestep $agestep"
-#         echo "About to run: $cmd"
-#         $cmd
-#     fi
-# done
+# # --- Encode data ---
+encode_dir=${out_dir}/encoded
+echo "Encoding scans ..."
+for roi in $( echo $labels | sed 's/,/ /g' ); do
+    list_ravens=${ravens_dir}/list_${roi}.csv
+    encode_suff="_${roi}_encoded.npz"
+    cmd="python ./utils/util_refdata_encode.py ${list_ravens} ${encode_dir} ${encode_suff} --n_samples ${nsamples}"
+    echo "About to run: $cmd"
+    $cmd
+done
+
+#-------------------------------
+# --- Make list of encoded  ---
+echo "Making list of encoded scans ..."
+for roi in $( echo $labels | sed 's/,/ /g' ); do
+    list_encoded=${encode_dir}/list_${roi}.csv
+    
+    if [ ! -e $list_encoded ]; then
+        echo MRID,FileName > $list_encoded
+        for mrid in $(sed 1d $list | cut -d, -f1 ); do
+            fname=${encode_dir}/${mrid}${encode_suff}
+            if [ -e ${fname} ]; then
+                echo $mrid,${fname}
+            fi >> $list_encoded
+        done
+    fi
+done
+
+# #-------------------------------
+# # --- Calculate stats (encoded) ---
+stats_dir=${out_dir}/stats_npz
+echo "Creating stat maps ..."
+for roi in $( echo $labels | sed 's/,/ /g' ); do
+    list_stats=${stats_dir}/list_${roi}.csv
+    list_encoded=${encode_dir}/list_${roi}.csv
+    if [ ! -e ${list_stats} ]; then
+        cmd="python ./utils/util_refdata_get_stats.py $roi $list $list_encoded ${stats_dir} --agediff $agediff --agestep $agestep"
+        echo "About to run: $cmd"
+        $cmd
+    fi
+done
 
 # #-------------------------------
 # # --- Calculate stats (nifti) ---
