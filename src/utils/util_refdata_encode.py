@@ -53,7 +53,7 @@ def encode_map(in_file, params, out_file, out_field = 'imgvec'):
     
     print(f"Encoded data saved to {out_file}")
 
-def detect_params(files, out_file, downsample = 2, n_samples=50, perc_high = 99.5, perc_low = 0.5):
+def detect_params(files, out_file, downsample = 2, n_samples=50, perc_high = 98, perc_low = 2):
     """
     Detect parameters from a random subset of nifti files in indir.
     Saves params.json in outdir.
@@ -111,8 +111,8 @@ def detect_params(files, out_file, downsample = 2, n_samples=50, perc_high = 99.
     global_vmax = float(np.max(vmaxs))
 
     # Global min/max
-    global_vlow = float(np.percentile(perc_low))
-    global_vhigh = float(np.percentile(perc_high))
+    global_vlow = float(np.percentile(vmins, perc_low))
+    global_vhigh = float(np.percentile(vmaxs, perc_high))
 
     print(f'Intentiy values min max: {global_vmin} {global_vmax}' )
     print(f'Intentiy values low high: {global_vlow} {global_vhigh}' )
