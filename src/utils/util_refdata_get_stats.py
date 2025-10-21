@@ -75,6 +75,8 @@ def calc_stats_nifti(roilabel, df, outdir, agediff=0.5, agestep=1, in_field='img
         bin_end = bin_center + agediff
         for sex in df["Sex"].unique():
 
+            # Check out files
+            label = f"Label{roilabel}_Age{bin_center}_Sex{sex}"
             out_file_mean = os.path.join(outdir, f"mean_{label}.nii.gz")    
             out_file_std = os.path.join(outdir, f"std_{label}.nii.gz")    
 
@@ -106,8 +108,6 @@ def calc_stats_nifti(roilabel, df, outdir, agediff=0.5, agestep=1, in_field='img
             mean_map = mean_map.reshape(dshape)
             std_map = std_map.reshape(dshape)
 
-            # Label
-            label = f"Label{roilabel}_Age{bin_center}_Sex{sex}"
 
             # Save outputs
             ids=sub_df.MRID.to_list()
