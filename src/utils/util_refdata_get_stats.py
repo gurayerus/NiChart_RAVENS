@@ -74,6 +74,14 @@ def calc_stats_nifti(roilabel, df, outdir, agediff=0.5, agestep=1, in_field='img
         bin_start = bin_center - agediff
         bin_end = bin_center + agediff
         for sex in df["Sex"].unique():
+
+            out_file_mean = os.path.join(outdir, f"mean_{label}.nii.gz")    
+            out_file_std = os.path.join(outdir, f"std_{label}.nii.gz")    
+
+            if os.path.exists(out_file_mean) and os.path.exists(out_file_std):
+                print(f'Out file exists, skip for: {bin_center} {sex}')
+                continue
+            
             sub_df = df[(df["Age"] >= bin_start) & (df["Age"] < bin_end) & (df["Sex"] == sex)]
             if sub_df.empty:
                 continue
@@ -104,11 +112,9 @@ def calc_stats_nifti(roilabel, df, outdir, agediff=0.5, agestep=1, in_field='img
             # Save outputs
             ids=sub_df.MRID.to_list()
 
-            out_file_mean = os.path.join(outdir, f"mean_{label}.nii.gz")    
             m_img = nib.Nifti1Image(mean_map, affine=nii.affine, header=nii.header)
             nib.save(m_img, out_file_mean)
 
-            out_file_std = os.path.join(outdir, f"std_{label}.nii.gz")    
             s_img = nib.Nifti1Image(std_map, affine=nii.affine, header=nii.header)
             nib.save(s_img, out_file_std)
 
