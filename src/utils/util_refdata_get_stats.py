@@ -87,6 +87,8 @@ def calc_stats_nifti(roilabel, df, outdir, agediff=0.5, agestep=1, in_field='img
             sub_df = df[(df["Age"] >= bin_start) & (df["Age"] < bin_end) & (df["Sex"] == sex)]
             if sub_df.empty:
                 continue
+            
+            print(f'Calculating stats for: {bin_center} {sex} : {sub_df.shape[0]}')
 
             maps = []
             for _, row in sub_df.iterrows():
