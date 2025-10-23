@@ -8,18 +8,33 @@
 - Post-processing steps to calculate statistical maps from RAVENS, and to warp outputs to initial subject space
 
 ## Installation
-You can install the package using:
+
+- You can install the package using:
 
 ```bash
 pip install nichart-ravens [FIXME: dependencies ANTs 2.3.1 and Python (nibabel))
 ```
 
-## Quick Test
-- See the test script to apply a fast RAVENS calculation on two scans:
+- Or use the docker container: 
+    
+    cbica/nichart_ravens:initialdemo (https://hub.docker.com/r/cbica/nichart_ravens)
+  
+## Application
+
+- See the test scripts to apply a fast CSF abnormality map calculation on the test image:
  
 ```bash
 cd ./test/scripts
-./test1.sh
+```
+
+```bash
+./run_test_installed.sh
+```
+
+or
+
+```bash
+./run_test_docker.sh
 ```
   
   
