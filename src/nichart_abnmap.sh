@@ -28,6 +28,12 @@ export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=4
 # Get absolute path to the folder containing this script
 # SCRIPT_DIR="$(dirname "$(realpath "$0")")"
 SCRIPT_DIR=$(pwd)
+if [ -n "${BASH_SOURCE[0]}" ]; then
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+else
+    SCRIPT_DIR="$(pwd)"
+fi
+echo; echo "Script dir is: ${SCRIPT_DIR}"; echo;
 
 # Define paths relative to the script location
 RES_PATH="${SCRIPT_DIR}/../resources"
