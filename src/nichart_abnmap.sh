@@ -241,6 +241,8 @@ for label in $(echo $labels | sed 's/,/ /g'); do
 done
 
 if [ "${flag_del_tmp}" == 'yes' ]; then
+    echo; echo "Deleting temporary folders ..."
+
     rm -rf ${out_dir}/warps
     echo; echo "Removed temp folder: ${out_dir}/warps"
     
@@ -249,6 +251,9 @@ if [ "${flag_del_tmp}" == 'yes' ]; then
     
     rm -rf ${out_dir}/labels
     echo; echo "Removed temp folder: ${out_dir}/labels"
+
+    rm -rf ${out_dir}/encoded
+    echo; echo "Removed temp folder: ${out_dir}/encoded"
 
 fi
 
