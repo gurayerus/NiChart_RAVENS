@@ -29,10 +29,10 @@ age=$( sed 1d ${input_dir}/list_demog.csv | cut -d, -f2 )
 sex=$( sed 1d ${input_dir}/list_demog.csv | cut -d, -f3 )
 
 ## Go to scripts
-cd ${app_dir}/scripts
+cd ${app_dir}/src
 
 ## Run abn map creation
-CMD="nichart_abnmap.sh \
+CMD="./nichart_abnmap.sh \
         --in_img ${t1} \
         --in_seg ${t1seg} \
         --labels CSF \
