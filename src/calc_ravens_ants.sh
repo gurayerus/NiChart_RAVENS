@@ -26,7 +26,7 @@
 export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=4
 
 usage() {
-  echo "Usage: $0 --in_img <in_img_file> --icv_mask <icv_mask> --in_seg <in_seg_img> --labels <string> --template <template> --out_dir <output_dir> --out_prefix <output_prefix> [--reg_mode <string>]  [--flag_invert <string>] [--label_dict <string>] [--flag_del_warps <string>] [--flag_del_tmp <string>]"
+  echo "Usage: $0 --in_img <in_img_file> --icv_mask <icv_mask> --in_seg <in_seg_img> --labels <string> --template <template> --out_dir <output_dir> --out_prefix <output_prefix> [--reg_mode <string>] [--reg_backend <ants|fireants>] [--flag_invert <string>] [--label_dict <string>] [--flag_del_warps <string>] [--flag_del_tmp <string>]"
   echo
   echo "Required:"
   echo "  --in_img     Source image file (absolute path)"
@@ -39,6 +39,7 @@ usage() {
   echo
   echo "Optional:"
   echo "  --reg_mode   Registration reg_mode (default: default)"
+  echo "  --reg_backend Registration backend (default: ants)"
   echo "  --flag_invert Invert image intensities (default: no)"
   echo "  --label_dict Label dictionary to convert labels to indices (default: None)"
   echo "  --flag_del_warps  Flag to delete warps (default: no)"
@@ -49,13 +50,14 @@ usage() {
 
 # Default values for optional arguments
 reg_mode='default'
+reg_backend='ants'
 label_dict='none'
 flag_invert='no'
 flag_del_warps='no'
 flag_del_tmp='no'
 
 # parse options with getopt
-OPTS=$(getopt -o "" -l in_img:,icv_mask:,in_seg:,labels:,template:,out_dir:,out_prefix:,reg_mode:,label_dict:,flag_invert:,flag_del_warps:,flag_del_tmp:,help -n "$0" -- "$@")
+OPTS=$(getopt -o "" -l in_img:,icv_mask:,in_seg:,labels:,template:,out_dir:,out_prefix:,reg_mode:,reg_backend:,label_dict:,flag_invert:,flag_del_warps:,flag_del_tmp:,help -n "$0" -- "$@")
 
 if [ $? != 0 ]; then usage; fi
 
@@ -71,6 +73,7 @@ while true; do
     --out_dir ) out_dir="$2"; shift 2 ;;
     --out_prefix ) prefix="$2"; shift 2 ;;
     --reg_mode )   reg_mode="$2"; shift 2 ;;
+    --reg_backend ) reg_backend="$2"; shift 2 ;;
     --label_dict ) label_dict="$2"; shift 2 ;;
     --flag_invert ) flag_invert="$2"; shift 2 ;;
     --flag_del_warps ) flag_del_warps="$2"; shift 2 ;;
@@ -96,6 +99,7 @@ echo "Template image:      $template"
 echo "Output directory:    $out_dir"
 echo "Output prefix:       $prefix"
 echo "Registration mode :  $reg_mode"
+echo "Registration backend: $reg_backend"
 echo "Label dictionary:    $label_dict"
 echo "Invert image intensities: $flag_invert"
 echo "Delete warps: $flag_del_warps"
@@ -177,36 +181,67 @@ if [ "${flag_invert}" == 'yes' ]; then
     t1_icv=${t1_inv}
 fi
 
-# Source ants utils
+# Source ants utils (still used for Jacobian and warping even with FireANTs backend)
 source ./utils/util_ants.sh
 
-# Apply ANTs
+# Apply registration (ANTs or FireANTs)
 warp_dir="${out_dir}/warps"
 mkdir -p "$warp_dir"
-final_warped=${warp_dir}/${prefix}Warped.nii.gz
-final_warp=${warp_dir}/${prefix}1Warp.nii.gz
-final_invwarp=${warp_dir}/${prefix}1InverseWarp.nii.gz
-final_affine=${warp_dir}/${prefix}0GenericAffine.mat
-if [ -e ${final_warped} ] && [ -e ${final_warp} ] && [ -e ${final_invwarp} ] && [ -e ${final_affine} ]; then
-    echo; echo "ANTs results exist, skip ANTs registration!"
+
+if [ "${reg_backend}" == "ants" ]; then
+    final_warped=${warp_dir}/${prefix}Warped.nii.gz
+    final_warp=${warp_dir}/${prefix}1Warp.nii.gz
+    final_invwarp=${warp_dir}/${prefix}1InverseWarp.nii.gz
+    final_affine=${warp_dir}/${prefix}0GenericAffine.mat
+
+    if [ -e ${final_warped} ] && [ -e ${final_warp} ] && [ -e ${final_invwarp} ] && [ -e ${final_affine} ]; then
+        echo; echo "ANTs results exist, skip ANTs registration!"
+    else
+        echo; echo "Running ANTs registration (mode=${reg_mode}) ..."
+        ants_reg ${reg_mode} ${template} ${t1_icv} ${warp_dir}/${prefix}
+    fi
+
+    # Calculate deformation (compose warp + affine)
+    final_def=${warp_dir}/${prefix}Def.nii.gz
+    if [ -e ${final_def} ]; then
+        echo; echo "Deformation exists, skip composing ANTs warps!"
+    else
+        cmd="ants_compose ${final_warp} ${final_affine} ${template} ${final_def}"
+        echo "Running: $cmd"
+        $cmd
+    fi
+
 else
-    ants_reg ${reg_mode} ${template} ${t1_icv} ${warp_dir}/${prefix}
+    # FireANTs backend: registration done via Python, directly writing Def.nii.gz and InvDef.nii.gz
+    final_warped=${warp_dir}/${prefix}Warped.nii.gz
+    final_def=${warp_dir}/${prefix}Def.nii.gz
+    final_invwarp=${warp_dir}/${prefix}InvDef.nii.gz
+    final_affine=${warp_dir}/${prefix}0GenericAffine.mat
+
+    if [ -e ${final_warped} ] && [ -e ${final_def} ] && [ -e ${final_invwarp} ] && [ -e ${final_affine} ]; then
+        echo; echo "FireANTs results exist, skip FireANTs registration!"
+    else
+        cmd="python3 utils/util_fireants.py --fixed ${template} --moving ${t1_icv} --out_prefix ${warp_dir}/${prefix} --profile ${reg_mode}"
+        echo; echo "Running: $cmd"
+        $cmd
+    fi
 fi
 
-# Move warped image to out folder
-mv ${final_warped} ${out_dir}
-
-# Calculate deformation
-final_def=${warp_dir}/${prefix}Def.nii.gz
-if [ -e ${final_def} ]; then
-    echo; echo "Deformation exists, skip ANTs registration!"
+# Save affine-only moved image (using ANTs affine transform)
+affine_warped=${warp_dir}/${prefix}AffineWarped.nii.gz
+if [ -e ${affine_warped} ]; then
+    echo; echo "Affine-only warped image exists, skip calculation!"
 else
-    cmd="ants_compose ${final_warp} ${final_affine} ${template} ${final_def}"
+    interp_affine='Linear'
+    cmd="ants_apply ${t1_icv} ${final_affine} ${template} ${interp_affine} ${affine_warped}"
     echo "Running: $cmd"
     $cmd
 fi
 
-# Create jacobian
+# Move warped image to out folder (common to both backends)
+mv ${final_warped} ${out_dir}
+
+# Create jacobian (common to both backends; uses ANTs CLI)
 final_jac=${warp_dir}/${prefix}Jacobian.nii.gz
 if [ -e ${final_jac} ]; then
     echo; echo "Jacobian exists, skip calculation!"

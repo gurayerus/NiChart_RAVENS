@@ -93,7 +93,10 @@ for ll in $( sed 1d $list); do
     fi
 
     # Run command for each subject
-    cmd="./calc_ravens_ants.sh --in_img ${t1_img} --icv_mask ${icv_mask} --in_seg ${label_img} --labels ${labels} --template ${templ_img} --out_dir ${out_sub} --out_prefix ${out_pref} --reg_mode ${regtype} --flag_invert ${flag_invert} --flag_del_warps ${flag_del_warps} --flag_del_tmp ${flag_del_tmp}"
+    # Note: registration backend is currently fixed to ANTs for reference data prep.
+    # If you wish to use FireANTs here, extend the config to set reg_backend and
+    # add `--reg_backend ${reg_backend}` below.
+    cmd="./calc_ravens_ants.sh --in_img ${t1_img} --icv_mask ${icv_mask} --in_seg ${label_img} --labels ${labels} --template ${templ_img} --out_dir ${out_sub} --out_prefix ${out_pref} --reg_mode ${regtype} --reg_backend ants --flag_invert ${flag_invert} --flag_del_warps ${flag_del_warps} --flag_del_tmp ${flag_del_tmp}"
     if [ ! -z ${label_dict} ]; then
         cmd="${cmd} --label_dict ${label_dict}"
     fi

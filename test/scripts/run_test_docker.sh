@@ -7,6 +7,9 @@ mrid='subj1'
 regmode='quick'         # Default mode (~10 minutes)
 regmode='test'          # For a quick test (~1 minutes)
 
+## Registration backend (inside container this is currently limited to ANTs)
+reg_backend='ants'
+
 ## Mounting path for the container app
 app_dir=$(realpath ../..)
 input_dir="${app_dir}/test/input/${mrid}"
@@ -41,6 +44,7 @@ DOCKER_CMD="docker run -it --rm \
         --out_dir /output \
         --out_prefix ${mrid}_ \
         --reg_mode ${regmode} \
+        --reg_backend ${reg_backend} \
         --age ${age} \
         --sex ${sex} \
         --icv_mask ${t1seg} \

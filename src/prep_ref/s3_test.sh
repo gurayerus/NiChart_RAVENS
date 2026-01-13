@@ -13,6 +13,9 @@ list=${din}/list_test.csv
 # regtype='quick'
 regtype='default'
 
+# Registration backend (ants | fireants). For now, keep ants as default for ref tests.
+reg_backend='ants'
+
 # ref=${pdir}/csf_ravens_${regtype}/stats_nifti
 ref=${pdir}/csf_ravens_${regtype}/stats_npz
 dout=${pdir}/zscores/out_${regtype}
@@ -53,7 +56,7 @@ for ll in `sed 1d $list`; do
 
 
     # Run command
-    cmd="./nichart_abnmap.sh --in_img $t1 --in_seg ${t1seg} --labels ${labels} --out_dir ${dsub} --out_prefix ${mrid}_ --reg_mode ${regtype} --age $age --sex $sex --icv_mask ${t1seg} --flag_invert ${flag_invert} --flag_del_tmp ${flag_del_tmp} --ref_dir ${ref}"
+    cmd="./nichart_abnmap.sh --in_img $t1 --in_seg ${t1seg} --labels ${labels} --out_dir ${dsub} --out_prefix ${mrid}_ --reg_mode ${regtype} --reg_backend ${reg_backend} --age $age --sex $sex --icv_mask ${t1seg} --flag_invert ${flag_invert} --flag_del_tmp ${flag_del_tmp} --ref_dir ${ref}"
 
     if [ "${isslurm}" == 'yes' ]; then
         logdir=${dsub}/log_slurm

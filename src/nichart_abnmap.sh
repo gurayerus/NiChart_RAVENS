@@ -59,6 +59,7 @@ usage() {
   echo "  --label_dict <path>     ROI dictionary file (default: none)"
   echo "  --ref_dir <path>        Reference directory (default: none)"
   echo "  --reg_mode <str>        Registration mode (default: default)"
+  echo "  --reg_backend <str>     Registration backend: ants | fireants (default: ants)"
   echo "  --age <int>             Subject's age (default: none)"
   echo "  --sex <str>             Subject's sex (F or M, default: none)"
   echo "  --icv_mask <int>        Mask to calculate intra-cranial volume (default: none)"
@@ -79,6 +80,7 @@ usage() {
 template="${RES_PATH}/templates/colin27/colin27_t1_tal_lin_T1_LPS_dlicv.nii.gz"
 label_dict="${RES_PATH}/dictionaries/list_MUSE_derived.csv"
 reg_mode='default'
+reg_backend='ants'
 
 ref_dir="${RES_PATH}/refmodels/ref_ravens_test/stats_encoded"
 ref_dir="${RES_PATH}/refmodels/ref_ravens_test/stats_nifti"
@@ -102,6 +104,7 @@ while [[ $# -gt 0 ]]; do
     --label_dict) label_dict="$2"; shift 2;;
     --ref_dir) ref_dir="$2"; shift 2;;
     --reg_mode) reg_mode="$2"; shift 2;;
+    --reg_backend) reg_backend="$2"; shift 2;;
     --age) age="$2"; shift 2;;
     --sex) sex="$2"; shift 2;;
     --icv_mask) icv_mask="$2"; shift 2;;
@@ -169,6 +172,7 @@ echo "  flag_invert = $flag_invert"
 echo "  label_dict  = $label_dict"
 echo "  ref_dir     = $ref_dir"
 echo "  reg_mode    = $reg_mode"
+echo "  reg_backend = $reg_backend"
 echo "  age         = $age"
 echo "  sex         = $sex"
 echo "  flag_icvcorr = $flag_icvcorr"
@@ -179,7 +183,7 @@ echo
 
 #-------------------------------
 # --- Calculate RAVENS ---
-cmd="./calc_ravens_ants.sh --in_img ${in_img} --in_seg ${in_seg} --labels ${labels} --template ${template} --out_dir ${out_dir} --out_prefix ${out_prefix} --reg_mode ${reg_mode} --flag_invert ${flag_invert}"
+cmd="./calc_ravens_ants.sh --in_img ${in_img} --in_seg ${in_seg} --labels ${labels} --template ${template} --out_dir ${out_dir} --out_prefix ${out_prefix} --reg_mode ${reg_mode} --reg_backend ${reg_backend} --flag_invert ${flag_invert}"
 if [ ! -z ${label_dict} ]; then
     cmd="${cmd} --label_dict ${label_dict}"
 fi
@@ -218,7 +222,7 @@ for label in $(echo $labels | sed 's/,/ /g'); do
 
 done
 
-# Source ants utils
+# Source ants utils (used for ANTs backend)
 source ./utils/util_ants.sh
 
 for label in $(echo $labels | sed 's/,/ /g'); do
@@ -228,15 +232,24 @@ for label in $(echo $labels | sed 's/,/ /g'); do
 
     in_tmp=${out_dir}/${out_prefix}Label_${label}${suff}_zScored.nii.gz
     out_tmp=${out_dir}/${out_prefix}Label_${label}${suff}_zScored_inSubj.nii.gz
-    def_invwarp=${out_dir}/warps/${out_prefix}1InverseWarp.nii.gz
-    def_affine=${out_dir}/warps/${out_prefix}0GenericAffine.mat
+
     if [ -e ${out_tmp} ]; then
         echo; echo "RAVENS map in subject space for label ${label} exists, skip calculation!"
-    else
-        cmd="ants_apply_inv ${in_tmp} ${in_img} ${def_invwarp} ${def_affine} ${out_tmp} ${interp}"
-        echo; echo "Running: $cmd"
-        $cmd
+        continue
     fi
+
+    if [ "${reg_backend}" == "ants" ]; then
+        def_invwarp=${out_dir}/warps/${out_prefix}1InverseWarp.nii.gz
+        def_affine=${out_dir}/warps/${out_prefix}0GenericAffine.mat
+        cmd="ants_apply_inv ${in_tmp} ${in_img} ${def_invwarp} ${def_affine} ${out_tmp} ${interp}"
+    else
+        # FireANTs backend: use inverse deformation field written by util_fireants.py
+        def_invwarp=${out_dir}/warps/${out_prefix}InvDef.nii.gz
+        cmd="antsApplyTransforms -d 3 -i ${in_tmp} -r ${in_img} -n ${interp} -o ${out_tmp} -t ${def_invwarp}"
+    fi
+
+    echo; echo "Running: $cmd"
+    $cmd
 
 done
 
