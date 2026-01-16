@@ -1,4 +1,14 @@
 #! /bin/bash
+#SBATCH --job-name=ravens_test
+#SBATCH --partition=ai
+#SBATCH --gres=gpu:a40:2
+#SBATCH --mem=16G
+#SBATCH --time=02:00:00
+#SBATCH --output=slurm-%j.out
+
+echo '----------------------------------------------------'
+echo "Running $0 $@"
+echo '----------------------------------------------------'
 
 ## Test subject
 mrid='subj1'
@@ -22,6 +32,7 @@ app_dir=$(realpath ../..)
 input_dir="${app_dir}/test/input/${mrid}"
 output_dir="${app_dir}/test/output/${mrid}"
 output_dir="${app_dir}/test/output_fireants/${mrid}"
+output_dir="${app_dir}/test/output_fireants_v2/${mrid}"
 
 ## Input files
 t1="${input_dir}/${mrid}_T1.nii.gz"
@@ -48,6 +59,14 @@ cd ${app_dir}/src
 # 
 #########
 
+# conda activate fireants
+source $(conda info --base)/etc/profile.d/conda.sh
+conda activate fireants
+
+echo '----------------------'
+echo $CUDA_VISIBLE_DEVICES
+nvidia-smi
+echo '----------------------'
 
 ## Run abn map creation
 CMD="./nichart_abnmap.sh \
